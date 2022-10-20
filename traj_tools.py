@@ -2,17 +2,12 @@
 ===============================================================================
                                 TRAJECTORY TOOLS
 ===============================================================================
+
+    - PyTraj based analysis tools for Amber trajectories
 """
-import matplotlib.pyplot as plt
+
 import numpy as np
-import pandas as pd
-import parmed as pmd
 import pytraj as pt
-from glob import glob
-from itertools import chain
-import subprocess
-import sys
-import os
 
 
 def _load_structure(in_str):
@@ -48,6 +43,7 @@ def align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
 
 
 def cut_traj(trj_path, top, out_path, denom=100, split=False, strip_mask=None):
+    # load the trajectory w. topology and run autoimage
     full_trj = pt.iterload(trj_path, top)
     full_trj = full_trj.autoimage()
     print(f'Loaded trajectory: {trj_path}')
@@ -68,7 +64,8 @@ def cut_traj(trj_path, top, out_path, denom=100, split=False, strip_mask=None):
     print(f'Saved new trajectory: {out_path}')
 
 
-def measure_rmsd(trj_path, top_path, ref_str, rmsd_mask, aln_mask='@CA,C,N,O'):
+def measure_rmsd(trj_path, top_path, ref_str, rmsd_mask,
+                 aln_mask='@CA,C,N,O', nofit=True):
     # load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # load ref. structure if path is given
@@ -78,7 +75,7 @@ def measure_rmsd(trj_path, top_path, ref_str, rmsd_mask, aln_mask='@CA,C,N,O'):
     # align the traj. using backbone atoms
     traj = pt.align(traj, mask=aln_mask, ref=ref)
     # calculate rmsd
-    data = pt.analysis.rmsd.rmsd_nofit(traj, mask=rmsd_mask, ref=ref)
+    data = pt.rmsd(traj, mask=rmsd_mask, ref=ref, nofit=nofit)
     return data
 
 
@@ -98,13 +95,14 @@ def measure_rmsf(trj_path, top_path, ref_str, rmsf_mask, aln_mask='@CA,C,N,O'):
 
 def extract_frame(trj_path, top, out_path,
                   ref_str=None, split=False, strip_mask=None, frame='final'):
+    # load the trajectory w. topology and run autoimage
     full_trj = pt.iterload(trj_path, top)
     full_trj = full_trj.autoimage()
-
-   #full_trj = pt.align(full_trj, mask=':5-360@CA,C,N,O', ref=ref)
     print(f'Loaded trajectory: {trj_path}')
-    N = int(full_trj.n_frames)-1 if frame=='final' else int(frame)-1
+    # calculate frame to extract
+    N = int(full_trj.n_frames)-1 if frame == 'final' else int(frame)-1
     print(f'Writing {N+1}th frame as pbd')
+    # save the new trajectory file
     pt.write_traj(out_path, full_trj, frame_indices=[N], overwrite=True)
     print(f'Saved new trajectory: {out_path}')
 
@@ -126,6 +124,9 @@ def measure_distance(trj_path, top_path, atom_pair, ref_str,
 
 def measure_angle(trj_path, top_path, angle_atoms, ref_str,
                   aln_mask='@CA,C,N,O'):
+    # check that correct atom/res mask is defined
+    n_atoms = len(angle_atoms.split())
+    assert n_atoms in [3, 4], "INPUT ERROR: Must have 3 or 4 atom groups."
     # load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # load ref. structure if path is given
@@ -135,6 +136,10 @@ def measure_angle(trj_path, top_path, angle_atoms, ref_str,
     # align the traj. using backbone atoms
     traj = pt.align(traj, mask=aln_mask, ref=ref)
     # calculate angle between set of atoms
-    data = pt.dihedral(traj=traj, mask=angle_atoms)
+    if n_atoms == 3:
+        print("Calculating angle between 3 atom groups.")
+        data = pt.angle(traj=traj, mask=angle_atoms)
+    else:
+        print("Calculating dihedral angle between 4 atom groups.")
+        data = pt.dihedral(traj=traj, mask=angle_atoms)
     return data
-

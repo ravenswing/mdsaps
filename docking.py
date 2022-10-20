@@ -1,3 +1,9 @@
+"""
+===============================================================================
+                        DOCKING WITH AUTODOCK VINA
+===============================================================================
+"""
+
 import pandas as pd
 from glob import glob
 import subprocess
@@ -6,7 +12,7 @@ import subprocess
 VINA_EXEC = '/home/rhys/software/vina_1.2.3_linux_x86_64'
 
 
-def read_grid(dir_path):
+def _read_grid(dir_path):
     """ Read the grid file and convert npts dimension to size """
     # read the file
     with open(glob(f"{dir_path}/grid*")[0], 'r') as f:
@@ -27,16 +33,14 @@ def read_grid(dir_path):
     return centre, size
 
 
-def run_vina(prot_path, lig_path, centre, size):
-    """ Run AutoDock Vina - subprocess did not work for some reason? """
+def _run_vina(prot_path, lig_path, centre, size):
+    """ Run AutoDock Vina  """
     out_fn = (f"{prot_path.split('/')[-2]}/"
               + f"{prot_path.split('/')[-1].split('.')[0]}_out.pdbqt")
     # construct the command
     vina_command = [f"{VINA_EXEC}",
-                    '--receptor',
-                    prot_path,
-                    '--ligand',
-                    lig_path,
+                    '--receptor', prot_path,
+                    '--ligand', lig_path,
                     f"--center_x {centre[0]}",
                     f"--center_y {centre[1]}",
                     f"--center_z {centre[2]}",
@@ -52,7 +56,7 @@ def run_vina(prot_path, lig_path, centre, size):
               '. Output:', error.output.decode("utf-8"))
 
 
-def read_output(out_file):
+def _read_output(out_file):
     """ Read the Vina Output PDBQT file
         Results:
             [0] affinity (kcal/mol)
@@ -68,11 +72,11 @@ def read_output(out_file):
 
 
 def process_pocket(pocket_dir):
-    c, s = read_grid(pocket_dir)
+    c, s = _read_grid(pocket_dir)
     for system in SYSTEMS:
         for prot_file in sorted(glob(f"{pocket_dir}/ship*.pdbqt")):
 
-            run_vina(prot_file, ligand_file, c, s)
+            _run_vina(prot_file, ligand_file, c, s)
 
 
 def process_results(results_dir):
@@ -83,7 +87,7 @@ def process_results(results_dir):
     for vina_output in sorted(glob(f"{results_dir}/*/*out.pdbqt")):
         print(vina_output)
         naming = vina_output.split('/')[-1].split('.')[0].split('_')
-        pose_list = read_output(vina_output)
+        pose_list = _read_output(vina_output)
         i = 1
         for p in pose_list:
             data.loc[len(data.index)] = [naming[3][:-6],
@@ -131,10 +135,10 @@ if __name__ == '__main__':
 
     # ligand file is the same for all systems
     ligand_file = f"{DRBX_DIR}/lig_paper_Ship.pdbqt"
-    c, s = read_grid(f"{DRBX_DIR}/Tunnel-Front_Pocket/")
-    run_vina(f"{DRBX_DIR}/Tunnel-Front_Pocket/ship1_R1_C3_Tunnel-FrontPocket.pdbqt",
-             ligand_file,
-             c, s)
+    c, s = _read_grid(f"{DRBX_DIR}/Tunnel-Front_Pocket/")
+    _run_vina(f"{DRBX_DIR}/Tunnel-Front_Pocket/ship1_R1_C3_Tunnel-FrontPocket.pdbqt",
+              ligand_file,
+              c, s)
 
     """
     for pocket in ['Tunnel-Front']:
