@@ -7,6 +7,7 @@
 import pandas as pd
 from glob import glob
 import subprocess
+import os
 
 
 VINA_EXEC = '/home/rhys/software/vina_1.2.3_linux_x86_64'

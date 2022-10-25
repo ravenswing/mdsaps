@@ -1,16 +1,28 @@
+"""
+===============================================================================
+                            GROMACS SYSTEM PREPARATION
+===============================================================================
+
+        Required inputs:
+            - PDB of apo protein
+            - PDB of ligand
+            - Ligand Parameters: .frcmod & .prep
+"""
+
+
 import numpy as np
 import parmed as pmd
 import pytraj as pt
 from itertools import chain
 import subprocess
-import sys
 
+PREP_INPUTS = '../simulations_files/submission_scripts/'
 
-OUT_DIR = '/media/rhys/data1/ampk_rhys_2022/metadynamics/data'
+OUT_DIR = '/home/rhys/Storage/ampk_metad_all_data'
 PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms/'
 
 SYSTS = ['a2b1', 'a2b2']
-LIGS = ['MT47']
+LIGS = ['MK87']
 
 
 def make_dirs(name, sys, lig):
@@ -40,8 +52,10 @@ def check_atom_order(pdb_file, prep_file):
     with open(prep_file, 'r') as f:
         prep = f.readlines()
 
-    atm_ord1 = [l.split()[2] for l in pdb if not any(x in l for x in ['TER', 'END'])]
-    atm_ord2 = [l.split()[1] for l in prep if len(l.split()) >= 7 and 'DUMM' not in l]
+    atm_ord1 = [line.split()[2] for line in pdb
+                if not any(x in line for x in ['TER', 'END'])]
+    atm_ord2 = [line.split()[1] for line in prep
+                if len(line.split()) >= 7 and 'DUMM' not in line]
 
     return atm_ord1 == atm_ord2
 
@@ -116,7 +130,7 @@ def combine_gro(prot_path, lig_path, out_path=None):
     # write the combined file to a new or custom path
     out_name = out_path if out_path is not None else f"{'/'.join(lig_path.split('/')[:-1])}/{(prot_path.split('/')[-1][:-4])}+{(lig_path.split('/')[-1][:-4])}_built.gro"
     with open(out_name, 'w+') as f:
-        f.writelines(str(l) for l in both_gro)
+        f.writelines(str(line) for line in both_gro)
 
 
 def combine_top(prot_top, lig_top, lig_name=None, directory=None):
@@ -155,25 +169,25 @@ def combine_top(prot_top, lig_top, lig_name=None, directory=None):
     # write the combined file to a new or custom path
     out_name = f"{out_path}/{(prot_top.split('/')[-1][:-4])}+{(lig_top.split('/')[-1][:-4])}.top"
     with open(out_name, 'w+') as f:
-        f.writelines(str(l) for l in new_top)
+        f.writelines(str(line) for line in new_top)
 
 
 def run_prep(out_dir, sys, lig, dif_size=False):
     # copy apo pdb
     try:
-        subprocess.call(['cp', f"/home/rhys/AMPK/Metad_Simulations/Simulation_Files/Local_Dirs/00-Prep/prep.sh", out_dir])
-        subprocess.call(['cp', f"/home/rhys/AMPK/Metad_Simulations/Simulation_Files/Local_Dirs/00-Prep/prep.mdp", out_dir])
+        subprocess.call(['cp', "/home/rhys/AMPK/Metad_Simulations/Simulation_Files/Local_Dirs/00-Prep/prep.sh", out_dir])
+        subprocess.call(['cp', "/home/rhys/AMPK/Metad_Simulations/Simulation_Files/Local_Dirs/00-Prep/prep.mdp", out_dir])
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # define number of Protein+X group
-    group_N = 17 if sys == 'a2b1' and lig in ['A769', 'PF739', 'MT47'] else 22
-    # make_ndx command with custom number    
+    group_N = 17 if sys == 'a2b1' and lig in ['A769', 'PF739', 'MT47', 'MK87'] else 22
+    # make_ndx command with custom number
     new_line = f'echo -e "name {group_N} Protein_LIG \\n q" | gmx_mpi make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx'
-    # add new line to prep.sh       
+    # add new line to prep.sh
     with open(f"{out_dir}/prep.sh", 'r') as f:
         lines = f.readlines()
-    # change box min. distance assignment for a2b1 complexes 
+    # change box min. distance assignment for a2b1 complexes
     if dif_size and sys == 'a2b1':
         for i in np.arange(len(lines)):
             if 'dodecahedron' in lines[i]:
@@ -238,25 +252,32 @@ def next_step(ndir):
                       '. Output:', error.output.decode("utf-8"))
 
 
-for system in SYSTS:
-    for lig in LIGS:
-        wd = f"{OUT_DIR}/{system}+{lig}/00-Prep"
-        make_dirs(wd, system, lig)
-        order_check = check_atom_order(f"{wd}/{lig}_4_{system}_4_gmx.pdb", f"{PARM_DIR}/{lig}.prep")
-        assert order_check == True
-        run_tleap(lig, f"{wd}/{lig}_4_{system}_4_gmx.pdb")
-        run_parmed(f"{wd}/{lig}_amb.top", f"{wd}/{lig}_amb.crd", f"{wd}/{lig}")
-        run_pdb2gmx(f"{wd}/{system}_apo.pdb", f"{wd}/{system}")
-        combine_top(f"{wd}/{system}.top", f"{wd}/{lig}.top")
-        combine_gro(f"{wd}/{system}.gro", f"{wd}/{lig}.gro")
-        run_prep(wd, system, lig, dif_size=False)
-        fix_itp_includes(wd, system)
-        setup_minim(f"{OUT_DIR}/{system}+{lig}", system, lig)
-
-
 def split_pdb(init_pdb):
 
     pdb = pt.load(init_pdb)
     ligN = pdb.top.n_residues
-    pt.write_traj(f'{OUT_DIR}/protein.pdb', pdb[f':1-{ligN-1}'], overwrite=True)
-    pt.write_traj(f'{OUT_DIR}/ligand.pdb', pdb[f':{ligN}'], overwrite=True)
+    pt.write_traj(f'{OUT_DIR}/protein.pdb',
+                  pdb[f':1-{ligN-1}'], overwrite=True)
+    pt.write_traj(f'{OUT_DIR}/ligand.pdb',
+                  pdb[f':{ligN}'], overwrite=True)
+
+
+if __name__ == "main":
+
+    for system in SYSTS:
+        for lig in LIGS:
+            wd = f"{OUT_DIR}/{system}+{lig}/00-Prep"
+            make_dirs(wd, system, lig)
+            order_check = check_atom_order(f"{wd}/{lig}_4_{system}_4_gmx.pdb",
+                                           f"{PARM_DIR}/{lig}.prep")
+            assert order_check is True, 'Atoms in PDB not ordered correctly.'
+            run_tleap(lig, f"{wd}/{lig}_4_{system}_4_gmx.pdb")
+            run_parmed(f"{wd}/{lig}_amb.top",
+                       f"{wd}/{lig}_amb.crd",
+                       f"{wd}/{lig}")
+            run_pdb2gmx(f"{wd}/{system}_apo.pdb", f"{wd}/{system}")
+            combine_top(f"{wd}/{system}.top", f"{wd}/{lig}.top")
+            combine_gro(f"{wd}/{system}.gro", f"{wd}/{lig}.gro")
+            run_prep(wd, system, lig, dif_size=False)
+            fix_itp_includes(wd, system)
+            setup_minim(f"{OUT_DIR}/{system}+{lig}", system, lig)

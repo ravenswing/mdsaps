@@ -34,7 +34,7 @@ def align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
     ref = _load_structure(ref_str)
     # run the alignment
     aligned = pt.align(to_align, mask=aln_mask, ref=ref)
-    aligned = aligned.autoimage()
+    #aligned = aligned.autoimage()
     # if strip is required, perform the strip
     if strip_mask is not None:
         aligned = aligned.strip(strip_mask)
