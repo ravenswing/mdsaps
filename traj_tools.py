@@ -28,13 +28,38 @@ def _load_structure(in_str):
         raise ValueError("Structure not recognised")
 
 
+def _run_cpptraj(directory, input_file):
+
+
+
+def make_fulltraj(directory, ref_str, ):
+
+    stem = directory.split('/')[0]
+    file1 = []
+    file1.append(f"parm {sys}.top")
+    for i in np.arange(140)+1:
+        file1.append(f"trajin {sys}.md_{i}.x")
+    if isinstance(ref_str, list):
+        file1.append(f"parm {directory}/{ref_str}[0] [refparm]")
+        file1.append(f"reference {directory}/{ref_str}[1] parm [refparm]")
+    else:
+        file1.append(f"reference {directory}/{ref_str}")
+    file1 += ['autoimage', 'rms reference @CA,C,N,O', 'strip :WAT,Na+,Cl-']
+    file1.append(f"trajout {sys}_R{rep}_1us_dry.nc netcdf")
+    file1.append("go")
+
+    with open(f"{DATA_DIR}/{sys}/R{rep}/fulltraj.in", 'w+') as f:
+            f.writelines('\n'.join(file1))
+
+
+
 def align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
     # load the initial structure
     to_align = _load_structure(in_str)
     ref = _load_structure(ref_str)
     # run the alignment
     aligned = pt.align(to_align, mask=aln_mask, ref=ref)
-    #aligned = aligned.autoimage()
+    aligned = aligned.autoimage()
     # if strip is required, perform the strip
     if strip_mask is not None:
         aligned = aligned.strip(strip_mask)
