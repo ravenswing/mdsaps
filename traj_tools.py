@@ -8,6 +8,8 @@
 
 import numpy as np
 import pytraj as pt
+import subprocess
+from glob import glob
 
 
 def _load_structure(in_str):
@@ -29,28 +31,95 @@ def _load_structure(in_str):
 
 
 def _run_cpptraj(directory, input_file):
+    # starting message
+    print(f"STARTING  | CPPTRAJ with input:  {input_file}")
+    # run CPPTRAJ
+    try:
+        subprocess.run(f"cpptraj -i {directory}/{input_file}",
+                       shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    # message when finished successfully
+    print(f"COMPLETED | CPPTRAJ with input:  {input_file}")
 
 
-
-def make_fulltraj(directory, ref_str, ):
-
-    stem = directory.split('/')[0]
+def make_fulltraj(directory, ref_str):
+    # get file base name from dir. name
+    stem = directory.split('/')[-1]
+    # count the number of md steps run
+    n_steps = len(glob(f"{directory}/{stem}.md_*.x"))
+    # check stem is correct and files are found
+    assert n_steps > 0, 'Not enough md files'
+    # display info
+    print(f" Making fulltraj for {stem} with {n_steps} steps.")
     file1 = []
-    file1.append(f"parm {sys}.top")
-    for i in np.arange(140)+1:
-        file1.append(f"trajin {sys}.md_{i}.x")
+    # load topology
+    file1.append(f"parm {directory}/{stem}.top")
+    # load each trajectory step
+    for i in np.arange(n_steps)+1:
+        file1.append(f"trajin {directory}/{stem}.md_{i}.x")
+    # load reference structure (.top + .r)
     if isinstance(ref_str, list):
-        file1.append(f"parm {directory}/{ref_str}[0] [refparm]")
-        file1.append(f"reference {directory}/{ref_str}[1] parm [refparm]")
+        file1.append(f"parm {ref_str[0]} [refparm]")
+        file1.append(f"reference {ref_str[1]} parm [refparm]")
+    # load reference structure (.pdb)
     else:
-        file1.append(f"reference {directory}/{ref_str}")
+        file1.append(f"reference {ref_str}")
+    # post-processing
     file1 += ['autoimage', 'rms reference @CA,C,N,O', 'strip :WAT,Na+,Cl-']
-    file1.append(f"trajout {sys}_R{rep}_1us_dry.nc netcdf")
+    # output
+    file1.append(f"trajout {directory}/{stem}_{n_steps*5}ns_dry.nc netcdf")
     file1.append("go")
+    # write all to cpptraj input file
+    with open(f"{directory}/fulltraj.in", 'w+') as file:
+        file.writelines('\n'.join(file1))
+    # run cpptraj using that input file
+    _run_cpptraj(directory, 'fulltraj.in')
 
-    with open(f"{DATA_DIR}/{sys}/R{rep}/fulltraj.in", 'w+') as f:
-            f.writelines('\n'.join(file1))
 
+def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
+    # make the out directory
+    try:
+        subprocess.run(f"mkdir -p {directory}/snapshots/",
+                       shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    stem = trj_path.split('/')[-1].split('.')[0]
+    if isinstance(snapshots[0], int):
+        print('oops')
+    elif isinstance(snapshots[0], list):
+        for snl in snapshots:
+            file1 = []
+            file1.append(f"parm {top_path}")
+            file1.append(f"trajin {trj_path} {' '.join([str(i) for i in snl])}")
+            # load reference structure (.top + .r)
+            if isinstance(ref_str, list):
+                file1.append(f"parm {ref_str[0]} [refparm]")
+                file1.append(f"reference {ref_str[1]} parm [refparm]")
+            # load reference structure (.pdb)
+            else:
+                file1.append(f"reference {ref_str}")
+            file1.append('rms reference @CA,C,N,O')
+            file1.append(f"trajout {directory}/snapshots/{stem}.pdb multi chainid A")
+            file1.append("go")
+            # write all to cpptraj input file
+            with open(f"{directory}/sn{snl[0]}.in", 'w') as file:
+                file.writelines('\n'.join(file1))
+            # run cpptraj using that input file
+            _run_cpptraj(directory, f"sn{snl[0]}.in")
+            snaps = np.arange(snl[0], snl[1], snl[2])
+            for i in np.arange(len(snaps)):
+                print(i, snaps[i])
+                try:
+                    subprocess.run(' '.join(['mv',
+                                   f"{directory}/snapshots/{stem}.pdb.{i+1}",
+                                   f"{directory}/snapshots/{stem}_{snaps[i]/200:.0f}ns.pdb"]),
+                                   shell=True, check=True)
+                except subprocess.CalledProcessError as error:
+                    print('Error code:', error.returncode,
+                          '. Output:', error.output.decode("utf-8"))
 
 
 def align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
