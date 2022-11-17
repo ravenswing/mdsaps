@@ -44,6 +44,20 @@ def _run_cpptraj(directory, input_file):
     print(f"COMPLETED | CPPTRAJ with input:  {input_file}")
 
 
+def _traj_align(trj_path, top, out_path=None, ref_str=None,
+                aln_mask='@CA,C,N,O'):
+    # load the trajectory w. topology
+    full_trj = pt.iterload(trj_path, top)
+    print(f'Loaded trajectory: {trj_path}')
+    if ref_str is not None:
+        full_trj = pt.align(full_trj, mask=aln_mask, ref=ref_str)
+    else:
+        full_trj = pt.align(full_trj, mask=aln_mask)
+    write_name = out_path if out_path is not None else trj_path
+    pt.write_traj(write_name, full_trj, overwrite=True)
+    print(f'Saved new trajectory: {write_name}')
+
+
 def make_fulltraj(directory, ref_str):
     # get file base name from dir. name
     stem = directory.split('/')[-1]
@@ -76,6 +90,20 @@ def make_fulltraj(directory, ref_str):
         file.writelines('\n'.join(file1))
     # run cpptraj using that input file
     _run_cpptraj(directory, 'fulltraj.in')
+
+
+def align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
+    # load the initial structure
+    to_align = _load_structure(in_str)
+    ref = _load_structure(ref_str)
+    # run the alignment
+    aligned = pt.align(to_align, mask=aln_mask, ref=ref)
+    #aligned = aligned.autoimage()
+    # if strip is required, perform the strip
+    if strip_mask is not None:
+        aligned = aligned.strip(strip_mask)
+    # write the new str
+    pt.write_traj(out_str, aligned, overwrite=True)
 
 
 def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
@@ -120,20 +148,11 @@ def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
                 except subprocess.CalledProcessError as error:
                     print('Error code:', error.returncode,
                           '. Output:', error.output.decode("utf-8"))
-
-
-def align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
-    # load the initial structure
-    to_align = _load_structure(in_str)
-    ref = _load_structure(ref_str)
-    # run the alignment
-    aligned = pt.align(to_align, mask=aln_mask, ref=ref)
-    aligned = aligned.autoimage()
-    # if strip is required, perform the strip
-    if strip_mask is not None:
-        aligned = aligned.strip(strip_mask)
-    # write the new str
-    pt.write_traj(out_str, aligned, overwrite=True)
+            # align all output structures 
+            for path in glob(f"{directory}/snapshots/*.pdb"):
+                align(path,
+                      f"{directory}/snapshots/{stem}_{snapshots[0][0]/200:.0f}ns.pdb",
+                      path)
 
 
 def cut_traj(trj_path, top, out_path, denom=100, split=False, strip_mask=None):
