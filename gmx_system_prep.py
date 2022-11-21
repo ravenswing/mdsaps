@@ -10,19 +10,21 @@
 """
 
 
+import subprocess
+from itertools import chain
 import numpy as np
 import parmed as pmd
 import pytraj as pt
-from itertools import chain
-import subprocess
 
-PREP_INPUTS = '../simulations_files/submission_scripts/'
-
+PREP_INPUTS = '/home/rhys/phd_tools/simulation_files/submission_scripts/Local_Dirs/00-Prep'
 OUT_DIR = '/home/rhys/Storage/ampk_metad_all_data'
-PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms/'
+PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
+SCRIPT_DIR = '/home/rhys/phd_tools/simulation_files/submission_scripts/MareNostrum/class_a'
+REMOTE = 'mn:/home/ub183/ub183944/scratch/ampk_replicas'
 
 SYSTS = ['a2b1', 'a2b2']
-LIGS = ['MK87']
+# LIGS = [ 'A769']
+LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
 
 
 def make_dirs(name, sys, lig):
@@ -175,22 +177,24 @@ def combine_top(prot_top, lig_top, lig_name=None, directory=None):
 def run_prep(out_dir, sys, lig, dif_size=False):
     # copy apo pdb
     try:
-        subprocess.call(['cp', "/home/rhys/AMPK/Metad_Simulations/Simulation_Files/Local_Dirs/00-Prep/prep.sh", out_dir])
-        subprocess.call(['cp', "/home/rhys/AMPK/Metad_Simulations/Simulation_Files/Local_Dirs/00-Prep/prep.mdp", out_dir])
+        subprocess.call(['cp', f"{PREP_INPUTS}/prep.sh", out_dir])
+        subprocess.call(['cp', f"{PREP_INPUTS}/prep.mdp", out_dir])
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # define number of Protein+X group
-    group_N = 17 if sys == 'a2b1' and lig in ['A769', 'PF739', 'MT47', 'MK87'] else 22
-    # make_ndx command with custom number
-    new_line = f'echo -e "name {group_N} Protein_LIG \\n q" | gmx_mpi make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx'
-    # add new line to prep.sh
+    # group_N = 17 if sys == 'a2b1' and lig in ['A769', 'PF739', 'MT47', 'MK87'] else 22
+    # uncharged system = 17, charged system = 22, with added ions = 24
+    group_N = 24
+    # make_ndx command with custom number    
+    new_line = f'echo -e "name {group_N} Protein_LIG \\n q" | $GMX make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx'
+    # add new line to prep.sh       
     with open(f"{out_dir}/prep.sh", 'r') as f:
         lines = f.readlines()
     # change box min. distance assignment for a2b1 complexes
     if dif_size and sys == 'a2b1':
         for i in np.arange(len(lines)):
-            if 'dodecahedron' in lines[i]:
+            if '-bt dodecahedron' in lines[i]:
                 lines[i] = lines[i].replace('1.2', '1.1')
                 print('CHANGING BOX SIZE')
     lines.append(new_line)
@@ -213,7 +217,7 @@ def fix_itp_includes(out_dir, sys,):
         with open(f"{out_dir}/{sys}_Protein{s}.itp", 'r') as f:
             lines = f.readlines()
         for i in np.arange(len(lines)):
-            if all(x in lines[i] for x in ['include', '/media']):
+            if all(x in lines[i] for x in ['include', '/home/rhys']):
                 lines[i] = f'#include "./{lines[i].split("/")[-1]}'
         with open(f"{out_dir}/{sys}_Protein{s}.itp", 'w+') as f:
             f.writelines(lines)
@@ -226,7 +230,7 @@ def setup_minim(dd, sys, lig):
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     try:
-        subprocess.call(f"cp /home/rhys/AMPK/Metad_Simulations/Simulation_Files/MN_Dirs/01-Min/* {dd}/01-Min/", shell=True)
+        subprocess.call(f"cp {SCRIPT_DIR}/01-Min/* {dd}/01-Min/", shell=True)
         subprocess.call(['cp', f"{dd}/00-Prep/{sys}+{lig}.top", f"{dd}/01-Min/"])
         subprocess.call(['cp', f"{dd}/00-Prep/{sys}+{lig}.gro", f"{dd}/01-Min/"])
         subprocess.call(['cp', f"{dd}/00-Prep/i.ndx", f"{dd}/01-Min/"])
@@ -236,7 +240,7 @@ def setup_minim(dd, sys, lig):
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     try:
-        subprocess.call(f"rsync -avzhPu {dd}/01-Min logjmn:/home/ub131/ub131321/scratch/ampk_funmetaD/{sys}+{lig}/", shell=True)
+        subprocess.call(f"rsync -avzhPu {dd}/01-Min {REMOTE}/{sys}+{lig}/", shell=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -246,14 +250,13 @@ def next_step(ndir):
     for sys in SYSTS:
         for lig in LIGS:
             try:
-                subprocess.call(f"rsync -avzhPu /home/rhys/AMPK/Metad_Simulations/Simulation_Files/MN_Dirs/{ndir} logjmn:/home/ub131/ub131321/scratch/ampk_funmetaD/{sys}+{lig}/", shell=True)
+                subprocess.call(f"rsync -avzhPu {SCRIPT_DIR}/{ndir} {REMOTE}/{sys}+{lig}/", shell=True)
             except subprocess.CalledProcessError as error:
                 print('Error code:', error.returncode,
                       '. Output:', error.output.decode("utf-8"))
 
 
 def split_pdb(init_pdb):
-
     pdb = pt.load(init_pdb)
     ligN = pdb.top.n_residues
     pt.write_traj(f'{OUT_DIR}/protein.pdb',
@@ -262,11 +265,14 @@ def split_pdb(init_pdb):
                   pdb[f':{ligN}'], overwrite=True)
 
 
-if __name__ == "main":
+if __name__ == "__main__":
 
+    print('started')
     for system in SYSTS:
         for lig in LIGS:
+            '''
             wd = f"{OUT_DIR}/{system}+{lig}/00-Prep"
+            print('running')
             make_dirs(wd, system, lig)
             order_check = check_atom_order(f"{wd}/{lig}_4_{system}_4_gmx.pdb",
                                            f"{PARM_DIR}/{lig}.prep")
@@ -281,3 +287,6 @@ if __name__ == "main":
             run_prep(wd, system, lig, dif_size=False)
             fix_itp_includes(wd, system)
             setup_minim(f"{OUT_DIR}/{system}+{lig}", system, lig)
+            '''
+            next_step('02-NVT')
+            next_step('0345-EQ-MD')
