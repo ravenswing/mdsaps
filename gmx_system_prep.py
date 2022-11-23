@@ -22,9 +22,11 @@ PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
 SCRIPT_DIR = '/home/rhys/phd_tools/simulation_files/submission_scripts/MareNostrum/class_a'
 REMOTE = 'mn:/home/ub183/ub183944/scratch/ampk_replicas'
 
-SYSTS = ['a2b1', 'a2b2']
-# LIGS = [ 'A769']
-LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
+#SYSTS = ['a2b1', 'a2b2'
+SYSTS = ['a2b2']
+#LIGS = [ 'A769']
+#LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
+LIGS = [ 'MK87']
 
 
 def make_dirs(name, sys, lig):
@@ -256,6 +258,47 @@ def next_step(ndir):
                       '. Output:', error.output.decode("utf-8"))
 
 
+def make_plumed(source_dat, ref_pdb, out_dat):
+    # extract the atom numbers for input into plumed file...
+    with open(ref_pdb, 'r') as f:
+        pdb = f.readlines()
+    # read in just atom number (1), res name (3) and res id (5)
+    lines = [l.split() for l in pdb if 'ATOM' in l]
+    lines = [[int(l[1]), l[3], int(l[5])] for l in lines]
+    # find those atoms that correspind to the ligand
+    ligID = 369 if 'a2b1' in ref_pdb else 368
+    lig_atoms = [l[0] for l in lines if l[2] == ligID]
+    # set extent of ligand
+    ligN = [min(lig_atoms), max(lig_atoms)]
+    # set extent of protein (assuming from 1 to ligand)
+    protN = [1, ligN[0]-1]
+    # p0 is same atoms for both a2b1 and a2b2
+    p0 = [1334, 166]
+    # p1 is different for a2b1 and a2b2
+    p1 = [4863, 662] if 'a2b1' in ref_pdb else [4885, 662]
+
+    # generic lines for readability
+    header1 = '#####################################\n#plumed.dat for Funnel MetaD#\n#####################################\n'
+    restart = '#RESTART'
+    header2 = '\n\n\n###############################################\n###DEFINE RADIUS + CALC PROT-LIG VECTOR COMP###\n###############################################\n'
+    header3 = '\n\n\n########################\n###DEFINITION_OF_COMs###\n########################\n'
+
+    # wholemolecules line that seperates ligand and protein into 2 entities
+    WHMline = f"WHOLEMOLECULES STRIDE=1 ENTITY0={protN[0]}-{protN[1]} ENTITY1={ligN[0]}-{ligN[1]}"
+    # ligand atoms
+    LIGline = f"lig: COM ATOMS={ligN[0]}-{ligN[1]}"
+    # funnel anchor points
+    P_0line = f"\np0: COM ATOMS={p0[0]},{p0[1]}"
+    P_1line = f"\np1: COM ATOMS={p1[0]},{p1[1]}\n\n"
+
+    # write the new plumed.dat file...
+    with open(source_dat, 'r') as f:
+        lines = f.readlines()
+    lines[:0] = [header1, restart, header2, WHMline, header3, LIGline, P_0line, P_1line]
+    with open(out_dat, 'w+') as f:
+        f.writelines(lines)
+
+
 def split_pdb(init_pdb):
     pdb = pt.load(init_pdb)
     ligN = pdb.top.n_residues
@@ -270,8 +313,8 @@ if __name__ == "__main__":
     print('started')
     for system in SYSTS:
         for lig in LIGS:
-            '''
             wd = f"{OUT_DIR}/{system}+{lig}/00-Prep"
+            '''
             print('running')
             make_dirs(wd, system, lig)
             order_check = check_atom_order(f"{wd}/{lig}_4_{system}_4_gmx.pdb",
@@ -290,3 +333,34 @@ if __name__ == "__main__":
             '''
             next_step('02-NVT')
             next_step('0345-EQ-MD')
+
+            '''
+            wd = f"{OUT_DIR}/{system}+{lig}/06-MetaD"
+
+            source_dat = '/home/rhys/AMPK/Metad_Simulations/System_Setup/metad_files/blank_metad.dat'
+
+            try:
+                subprocess.call(['mkdir', "-p", wd])
+            except subprocess.CalledProcessError as error:
+                print('Error code:', error.returncode, '. Output:', error.output.decode("utf-8"))
+
+            try:
+                subprocess.call(f"cp -r {SCRIPT_DIR}/06-MetaD/* {wd}/", shell=True)
+            except subprocess.CalledProcessError as error:
+                print('Error code:', error.returncode,
+                      '. Output:', error.output.decode("utf-8"))
+
+            make_plumed(source_dat, f"{OUT_DIR}/{system}+{lig}/0345-EQ-MD/{system}+{lig}_lastframe.pdb",
+                        f"{wd}/plumed_{system}+{lig}.dat")
+
+            try:
+                subprocess.call(f"rsync -avzhPu {wd} {REMOTE}/R2/{system}+{lig}/", shell=True)
+            except subprocess.CalledProcessError as error:
+                print('Error code:', error.returncode,
+                      '. Output:', error.output.decode("utf-8"))
+            try:
+                subprocess.call(f"rsync -avzhPu {wd} {REMOTE}/R3/{system}+{lig}/", shell=True)
+            except subprocess.CalledProcessError as error:
+                print('Error code:', error.returncode,
+                      '. Output:', error.output.decode("utf-8"))
+            '''
