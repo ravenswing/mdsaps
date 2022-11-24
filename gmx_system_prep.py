@@ -22,11 +22,11 @@ PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
 SCRIPT_DIR = '/home/rhys/phd_tools/simulation_files/submission_scripts/MareNostrum/class_a'
 REMOTE = 'mn:/home/ub183/ub183944/scratch/ampk_replicas'
 
-#SYSTS = ['a2b1', 'a2b2']
-SYSTS = ['a2b2']
+SYSTS = ['a2b1', 'a2b2']
+#SYSTS = ['a2b2']
 #LIGS = [ 'A769']
 #LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
-LIGS = [ 'MK87']
+LIGS = [ 'MK87', 'MT47']
 
 
 def make_dirs(name, sys, lig):
@@ -313,7 +313,8 @@ if __name__ == "__main__":
     print('started')
     for system in SYSTS:
         for lig in LIGS:
-            wd = f"{OUT_DIR}/{system}+{lig}/00-Prep"
+            # wd = f"{OUT_DIR}/{system}+{lig}/00-Prep"
+            wd = f"{OUT_DIR}/{system}+{lig}/06-MetaD"
             '''
             print('running')
             make_dirs(wd, system, lig)
@@ -330,12 +331,11 @@ if __name__ == "__main__":
             run_prep(wd, system, lig, dif_size=False)
             fix_itp_includes(wd, system)
             setup_minim(f"{OUT_DIR}/{system}+{lig}", system, lig)
-            '''
+
             next_step('02-NVT')
             next_step('0345-EQ-MD')
 
-            '''
-            wd = f"{OUT_DIR}/{system}+{lig}/06-MetaD"
+
 
             source_dat = '/home/rhys/AMPK/Metad_Simulations/System_Setup/metad_files/blank_metad.dat'
 
@@ -363,4 +363,9 @@ if __name__ == "__main__":
             except subprocess.CalledProcessError as error:
                 print('Error code:', error.returncode,
                       '. Output:', error.output.decode("utf-8"))
-            '''
+'''
+            try:
+                subprocess.call(f"rsync -avzhPu {wd} {REMOTE}/R4/{system}+{lig}/", shell=True)
+            except subprocess.CalledProcessError as error:
+                print('Error code:', error.returncode,
+                      '. Output:', error.output.decode("utf-8"))

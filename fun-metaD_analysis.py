@@ -12,7 +12,7 @@ import pickle
 import subprocess
 import sys
 from glob import glob
-
+from math import ceil
 sys.path.append('/home/rhys/phd_tools/python_scripts')
 import graphics
 import load_data as load
@@ -23,6 +23,7 @@ from math import floor
 import MDAnalysis as mda
 from MDAnalysis.analysis import diffusionmap, align, rms
 
+ANG = "\u212B"
 
 DATA_DIR = '/media/rhys/Storage/ampk_metad_all_data'
 SYSTS = ['a2b1', 'a2b2']
@@ -90,7 +91,7 @@ def fes_strideplot(wd, name, cmax=32, stride=50, to_use=[0, 1, 2]):
         max_vals.append(max_non_inf)
         print('VMAX: ', max_non_inf)
     print(f"using: {max(max_vals)}")
-    cmax = max(max_vals)+1
+    cmax = int(ceil(max_non_inf / 2.0)) * 2
 
     i = 0
     for i in np.arange(len(to_use)):
@@ -108,15 +109,69 @@ def fes_strideplot(wd, name, cmax=32, stride=50, to_use=[0, 1, 2]):
                 bbox_inches='tight')
 
 
+def new_strideplot(wd, name, stride=50, to_use=[0, 1, 2], basins=None):
+    fig, ax = plt.subplots(1, len(to_use), figsize=(len(to_use*8), 6))
+    # fig.tight_layout(h_pad=4)
+    plt.suptitle(f"FES Changes over time for {name}")
+    plt.subplots_adjust(top=0.85, right=0.915)
+    funnel_parms = {'lw': 0.0,
+                    'uw': 4.5,
+                    'sc': 2.5,
+                    'b': 1.0,
+                    'f': 0.15,
+                    'h': 1.5}
+    max_vals = []
+    for i in np.arange(len(to_use)):
+        data, labels = load.fes(f'{wd}/{name}_FES{to_use[i]}.dat', False)
+        data[2] = data[2]/4.184
+        max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+        max_vals.append(max_non_inf)
+        print('VMAX: ', max_non_inf)
+    print(f"using: {max(max_vals)}")
+    cmax = max(max_vals)+1
+
+    i = 0
+    for i in np.arange(len(to_use)):
+        data, labels = load.fes(f'{wd}/{name}_FES{to_use[i]}.dat', False)
+        data[2] = data[2]/4.184
+        max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+        data[2] = data[2] + (max(max_vals) - max_non_inf)
+        data[2] = data[2]*4.184
+        cmap = graphics.two_cv_contour(data, labels, cmax, ax[i], funnel_parms)
+        ax[i].set_title(f"After {stride*(i+1)} ns")
+        ax[i].set_xlabel(f"{labels[0]} / nm")
+        ax[i].set_ylabel(f"{labels[1]} / nm")
+        if basins is not None:
+            b1 = plt.Rectangle((basins['bound'][0], basins['bound'][2]),
+                               (basins['bound'][1] - basins['bound'][0]),
+                               basins['bound'][3],
+                               ls='--', fc='none', ec='k', lw=2.0)
+            ax[i].add_patch(b1)
+            b2 = plt.Rectangle((basins['unbound'][0], basins['unbound'][2]),
+                               (basins['unbound'][1] - basins['unbound'][0]),
+                               basins['unbound'][3],
+                               ls='--', fc='none', ec='k', lw=2.0)
+            ax[i].add_patch(b2)
+        i += 1
+    cax = plt.axes([0.93, 0.11, 0.01, 0.77])
+    cbar = plt.colorbar(cmap, cax=cax, aspect=10,
+                        ticks=np.arange(0., cmax, 2.0))
+    cbar.set_label('Free Energy / kcal/mol', fontsize=10)
+    fig.savefig(f'{SAVE_DIR}/NEW_FES_wStride_{name}.png', dpi=300,
+                bbox_inches='tight')
+
+
 if __name__ == "__main__":
     for system in SYSTS:
         for lig in LIGS:
             wd = f"{DATA_DIR}/{system}+{lig}/R1/06-MetaD"
-            run_sumhills(wd, f"{system}+{lig}", stride=125000)
-            fes_strideplot(wd,
+            # run_sumhills(wd, f"{system}+{lig}", stride=125000)
+            new_strideplot(wd,
                            f"{system}+{lig}",
-                           cmax=32,
-                           stride=250)
+                           stride=250,
+                           #                   proj       ext
+                           basins={'bound':   [0.0, 1.0, 0.0, 0.75],
+                                   'unbound': [3.5, 4.5, 0.0, 0.5]})
 
 
     # fes_multiplot()
