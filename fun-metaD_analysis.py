@@ -29,7 +29,7 @@ DATA_DIR = '/media/rhys/Storage/ampk_metad_all_data'
 SYSTS = ['a2b1', 'a2b2']
 LIGS = ['A769', 'PF739', 'SC4', 'MT47']
 
-# where to put the plots and other results
+# Where to put the plots and other results
 SAVE_DIR = '/home/rhys/AMPK/Figures'
 
 
@@ -47,7 +47,7 @@ def run_sumhills(wd, name, stride=None):
 def fes_multiplot(cmax=32):
     fig, ax = plt.subplots(4, 2, figsize=(25, 30))
 #     fig.tight_layout(h_pad=4)
-    plt.suptitle("FES for 500ns Fun-MetaD")
+    plt.suptitle('FES for 500ns Fun-MetaD')
     plt.subplots_adjust(top=0.94, right=0.915)
     funnel_parms = {'lw': 0.0,
                     'uw': 4.5,

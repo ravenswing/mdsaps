@@ -26,23 +26,23 @@ SYSTS = ['a2b1', 'a2b2']
 #SYSTS = ['a2b2']
 #LIGS = [ 'A769']
 #LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
-LIGS = [ 'MK87', 'MT47']
+LIGS = ['MK87', 'MT47']
 
 
 def make_dirs(name, sys, lig):
-    # make dir
+    # Make the working directory
     try:
         subprocess.call(['mkdir', "-p", name])
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
-    # copy apo pdb
+    # Copy in the apo pdb
     try:
         subprocess.call(['cp', f"/home/rhys/AMPK/Metad_Simulations/System_Setup/apo/{sys}_apo.pdb", name])
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
-    # copy ligand pdb
+    # Copy in the ligand pdb
     try:
         subprocess.call(['cp', f"/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_pdbs_4_gmx/{lig}_4_{sys}_4_gmx.pdb", name])
     except subprocess.CalledProcessError as error:
@@ -51,16 +51,17 @@ def make_dirs(name, sys, lig):
 
 
 def check_atom_order(pdb_file, prep_file):
+    # Open both the .pdb and .prep files
     with open(pdb_file, 'r') as f:
         pdb = f.readlines()
     with open(prep_file, 'r') as f:
         prep = f.readlines()
-
+    # Clean files and isolate atom names
     atm_ord1 = [line.split()[2] for line in pdb
                 if not any(x in line for x in ['TER', 'END'])]
     atm_ord2 = [line.split()[1] for line in prep
                 if len(line.split()) >= 7 and 'DUMM' not in line]
-
+    # Atom names must be idential 
     return atm_ord1 == atm_ord2
 
 
@@ -69,12 +70,13 @@ def run_tleap(lig, pdb_path):
     lig_params = f"{PARM_DIR}/{lig}"
 
     ffi_lines = 'source leaprc.gaff'
-    lig_lines = f'loadamberparams {lig_params}.frcmod\nloadamberprep {lig_params}.prep'
-    pdb_lines = f'struc = loadpdb {pdb_path}'
-    out_lines = f'saveamberparm struc {wd}/{lig}_amb.top {wd}/{lig}_amb.crd\nsavepdb struc {wd}/{lig}_leap.pdb'
+    lig_lines = f"loadamberparams {lig_params}.frcmod\nloadamberprep {lig_params}.prep"
+    pdb_lines = f"struc = loadpdb {pdb_path}"
+    out_lines = f"saveamberparm struc {wd}/{lig}_amb.top {wd}/{lig}_amb.crd\nsavepdb struc {wd}/{lig}_leap.pdb"
 
     with open('./temp.tleap', 'w+') as f:
-        f.write('\n'.join([ffi_lines, lig_lines, pdb_lines, out_lines, 'quit']))
+        f.write('\n'.join([ffi_lines, lig_lines,
+                           pdb_lines, out_lines, 'quit']))
 
     try:
         subprocess.call(['rm', './leap.log'])
@@ -101,8 +103,8 @@ def run_tleap(lig, pdb_path):
 
 def run_parmed(prmtop, crd, out_path):
     amber = pmd.load_file(prmtop, crd)
-    amber.save(f'{out_path}.top')
-    amber.save(f'{out_path}.gro')
+    amber.save(f"{out_path}.top")
+    amber.save(f"{out_path}.gro")
 
 
 def run_pdb2gmx(pdb_file, out_name):
@@ -118,82 +120,88 @@ def run_pdb2gmx(pdb_file, out_name):
 
 
 def combine_gro(prot_path, lig_path, out_path=None):
-    # load the protein gro file
+    # Load the protein gro file
     with open(prot_path, 'r') as f:
         protein_gro = f.readlines()
-    # load the ligand gro file
+    # Load the ligand gro file
     with open(lig_path, 'r') as f:
         ligand_gro = f.readlines()
-    # find the total number of atoms that the new gro will have
+    # Find the total number of atoms that the new gro will have
     total = (int(ligand_gro[1].split('\n')[0]) + int(protein_gro[1].split('\n')[0]))
     print(total)
-    # save that total as the start of the document
+    # Save that total as the start of the document
     line2 = ' '+str(total)+'\n'
-    # combine the the new total, the protein and ligand gro files, with the protein gro box
+    # Combine the the new total, the protein and ligand gro files 
     both_gro = chain(protein_gro[0], line2, protein_gro[2:-1], ligand_gro[2:-1], protein_gro[-1])
-    # write the combined file to a new or custom path
-    out_name = out_path if out_path is not None else f"{'/'.join(lig_path.split('/')[:-1])}/{(prot_path.split('/')[-1][:-4])}+{(lig_path.split('/')[-1][:-4])}_built.gro"
+    # Write the combined file to a new or custom path
+    out_name = out_path if out_path else f"{'/'.join(lig_path.split('/')[:-1])}/{(prot_path.split('/')[-1][:-4])}+{(lig_path.split('/')[-1][:-4])}_built.gro"
     with open(out_name, 'w+') as f:
         f.writelines(str(line) for line in both_gro)
 
 
 def combine_top(prot_top, lig_top, lig_name=None, directory=None):
-    # set the output path if not pre-defined
-    out_path = directory if directory is not None else f"{'/'.join(lig_top.split('/')[:-1])}"
-    # load the protein top file
+    # Set the output path if not pre-defined
+    out_path = directory if directory else f"{'/'.join(lig_top.split('/')[:-1])}"
+    # Load the protein .top file
     with open(prot_top) as f:
         pro = f.readlines()
-    # load the ligand top file
+    # Load the ligand .top file
     with open(lig_top) as f:
         d = '['
         lig = [d+e for e in f.read().split(d) if e]
-    # put ligand atomtypes in separate itp file
+    # Put ligand atomtypes in a separate .itp file
     with open(f"{out_path}/ligand_atomtypes.itp", 'w') as f:
         f.write([st for st in lig if 'atomtypes' in st][0])
-    # remove all necessary sections from ligand topology
+    # Remove all necessary sections from ligand topology
     remove = ['defaults', 'atomtypes', 'molecules', 'system']
-    include = '\n'.join([st for st in lig[1:] if not any(x in st for x in remove)])
-    # write the remainder to the ligand itp file
+    include = '\n'.join([st for st in lig[1:]
+                         if not any(x in st for x in remove)])
+    # Write the remainder to the ligand itp file
     with open(f"{out_path}/ligand.itp", 'w+') as f:
         f.write(include)
-    # extract the ligand residue name from the ligand topology
-    lig_res_name = lig_name if lig_name is not None else [st for st in lig if 'moleculetype' in st][0].split('\n')[2].split()[0]
+    # Extract the ligand residue name from the ligand topology
+    lig_res_name = lig_name if lig_name else [
+        st for st in lig if 'moleculetype' in st][0].split('\n')[2].split()[0]
     print(f"Using Ligand: {lig_res_name}")
-    # define new lines to add to prot topology, with include lines and comments
+    # Define new lines to add to prot topology, with include lines and comments
     include1 = '; Include ligand atom types \n#include \"./ligand_atomtypes.itp\" \n\n'
     include2 = '; Include ligand topology   \n#include \"./ligand.itp\" \n\n'
-    # also a line for the very bottom of the file, to add to the [molecules] entry
+    # Also a line for the very bottom of the file
+    # to add to the [molecules] entry
     include3 = f'{lig_res_name}                 1\n'
-    # atomtypes must appear before any [moleculetype] entry, in this case in the chain topologies
+    # Atomtypes must appear before any [moleculetype] entry
+    #    in this case in the chain topologies
     n1 = [i for i, s in enumerate(pro) if 'chain' in s][0]
-    # rest of lig. topology then goes before the water topology is loaded
+    # Rest of lig. topology then goes before the water topology is loaded
     n2 = [i for i, s in enumerate(pro) if 'water topology' in s][0]
-    # put the new lines in the correct place in the file
-    new_top = chain(pro[:n1], include1, pro[n1:n2], include2, pro[n2:], include3)
-    # write the combined file to a new or custom path
+    # Put the new lines in the correct place in the file
+    new_top = chain(pro[:n1], include1,
+                    pro[n1:n2], include2,
+                    pro[n2:], include3)
+    # Write the combined file to a new or custom path
     out_name = f"{out_path}/{(prot_top.split('/')[-1][:-4])}+{(lig_top.split('/')[-1][:-4])}.top"
     with open(out_name, 'w+') as f:
         f.writelines(str(line) for line in new_top)
 
 
 def run_prep(out_dir, sys, lig, dif_size=False):
-    # copy apo pdb
+    # Copy the apo pdb
     try:
         subprocess.call(['cp', f"{PREP_INPUTS}/prep.sh", out_dir])
         subprocess.call(['cp', f"{PREP_INPUTS}/prep.mdp", out_dir])
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
-    # define number of Protein+X group
+    # Define number of Protein+X group
     # group_N = 17 if sys == 'a2b1' and lig in ['A769', 'PF739', 'MT47', 'MK87'] else 22
-    # uncharged system = 17, charged system = 22, with added ions = 24
+    # Uncharged system = 17, charged system = 22, with added ions = 24
     group_N = 24
-    # make_ndx command with custom number    
+    # Make_ndx command with custom number
     new_line = f'echo -e "name {group_N} Protein_LIG \\n q" | $GMX make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx'
-    # add new line to prep.sh       
+    # Add new line to prep.sh
     with open(f"{out_dir}/prep.sh", 'r') as f:
         lines = f.readlines()
-    # change box min. distance assignment for a2b1 complexes
+    # Change box min. distance assignment for a2b1 complexes
     if dif_size and sys == 'a2b1':
         for i in np.arange(len(lines)):
             if '-bt dodecahedron' in lines[i]:
@@ -202,7 +210,7 @@ def run_prep(out_dir, sys, lig, dif_size=False):
     lines.append(new_line)
     with open(f"{out_dir}/prep.sh", 'w') as f:
         f.writelines(lines)
-    # run prep.sh
+    # Run prep.sh
     try:
         sub = subprocess.Popen(f"cd {out_dir}; bash prep.sh",
                                stdout=subprocess.PIPE,
@@ -242,7 +250,8 @@ def setup_minim(dd, sys, lig):
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     try:
-        subprocess.call(f"rsync -avzhPu {dd}/01-Min {REMOTE}/{sys}+{lig}/", shell=True)
+        subprocess.call(f"rsync -avzhPu {dd}/01-Min {REMOTE}/{sys}+{lig}/",
+                        shell=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -259,42 +268,43 @@ def next_step(ndir):
 
 
 def make_plumed(source_dat, ref_pdb, out_dat):
-    # extract the atom numbers for input into plumed file...
+    # Extract the atom numbers for input into plumed file...
     with open(ref_pdb, 'r') as f:
         pdb = f.readlines()
-    # read in just atom number (1), res name (3) and res id (5)
-    lines = [l.split() for l in pdb if 'ATOM' in l]
-    lines = [[int(l[1]), l[3], int(l[5])] for l in lines]
-    # find those atoms that correspind to the ligand
+    # Read in just atom number (1), res name (3) and res id (5)
+    lines = [ln.split() for ln in pdb if 'ATOM' in ln]
+    lines = [[int(ln[1]), ln[3], int(ln[5])] for ln in lines]
+    # Find those atoms that correspind to the ligand
     ligID = 369 if 'a2b1' in ref_pdb else 368
-    lig_atoms = [l[0] for l in lines if l[2] == ligID]
-    # set extent of ligand
+    lig_atoms = [ln[0] for ln in lines if ln[2] == ligID]
+    # Set extent of ligand
     ligN = [min(lig_atoms), max(lig_atoms)]
-    # set extent of protein (assuming from 1 to ligand)
+    # Set extent of protein (assuming from 1 to ligand)
     protN = [1, ligN[0]-1]
     # p0 is same atoms for both a2b1 and a2b2
     p0 = [1334, 166]
     # p1 is different for a2b1 and a2b2
     p1 = [4863, 662] if 'a2b1' in ref_pdb else [4885, 662]
 
-    # generic lines for readability
+    # Generic lines for readability
     header1 = '#####################################\n#plumed.dat for Funnel MetaD#\n#####################################\n'
     restart = '#RESTART'
     header2 = '\n\n\n###############################################\n###DEFINE RADIUS + CALC PROT-LIG VECTOR COMP###\n###############################################\n'
     header3 = '\n\n\n########################\n###DEFINITION_OF_COMs###\n########################\n'
 
-    # wholemolecules line that seperates ligand and protein into 2 entities
+    # WholeMolecules line that seperates ligand and protein into 2 entities
     WHMline = f"WHOLEMOLECULES STRIDE=1 ENTITY0={protN[0]}-{protN[1]} ENTITY1={ligN[0]}-{ligN[1]}"
-    # ligand atoms
+    # Ligand atoms
     LIGline = f"lig: COM ATOMS={ligN[0]}-{ligN[1]}"
-    # funnel anchor points
+    # Funnel anchor points
     P_0line = f"\np0: COM ATOMS={p0[0]},{p0[1]}"
     P_1line = f"\np1: COM ATOMS={p1[0]},{p1[1]}\n\n"
 
-    # write the new plumed.dat file...
+    # Write the new plumed.dat file...
     with open(source_dat, 'r') as f:
         lines = f.readlines()
-    lines[:0] = [header1, restart, header2, WHMline, header3, LIGline, P_0line, P_1line]
+    lines[:0] = [header1, restart, header2, WHMline,
+                 header3, LIGline, P_0line, P_1line]
     with open(out_dat, 'w+') as f:
         f.writelines(lines)
 
