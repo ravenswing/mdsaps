@@ -32,19 +32,19 @@ LIGS = ['MK87', 'MT47']
 def make_dirs(name, sys, lig):
     # Make the working directory
     try:
-        subprocess.call(['mkdir', "-p", name])
+        subprocess.run(['mkdir', "-p", name], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # Copy in the apo pdb
     try:
-        subprocess.call(['cp', f"/home/rhys/AMPK/Metad_Simulations/System_Setup/apo/{sys}_apo.pdb", name])
+        subprocess.run(['cp', f"/home/rhys/AMPK/Metad_Simulations/System_Setup/apo/{sys}_apo.pdb", name], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # Copy in the ligand pdb
     try:
-        subprocess.call(['cp', f"/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_pdbs_4_gmx/{lig}_4_{sys}_4_gmx.pdb", name])
+        subprocess.run(['cp', f"/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_pdbs_4_gmx/{lig}_4_{sys}_4_gmx.pdb", name], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -79,26 +79,16 @@ def run_tleap(lig, pdb_path):
                            pdb_lines, out_lines, 'quit']))
 
     try:
-        subprocess.call(['rm', './leap.log'])
+        subprocess.run(['rm', './leap.log'], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
 
     try:
-        subprocess.call(['tleap', '-f ./temp.tleap'])
+        subprocess.run(['tleap', '-f ./temp.tleap'], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
-
-#     try:
-#         sub = subprocess.Popen('tleap -f ./temp.tleap',
-#                                stdout=subprocess.PIPE,
-#                                stderr=subprocess.STDOUT,
-#                                shell=True
-#                               )
-#         out,errors =  sub.communicate()
-#     except:
-#         print("ERROR: TLeap unable to complete")
 
 
 def run_parmed(prmtop, crd, out_path):
@@ -109,14 +99,19 @@ def run_parmed(prmtop, crd, out_path):
 
 def run_pdb2gmx(pdb_file, out_name):
     try:
-        sub = subprocess.Popen(f"gmx_mpi pdb2gmx -f {pdb_file} -o {out_name}.gro -p {out_name}.top -i {out_name}_posre.itp -ff amber14sb_gmx_s2p -water tip3p -ignh",
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT,
-                               shell=True
-                               )
-        out, errors = sub.communicate()
-    except:
-        print("ERROR: TLeap unable to complete")
+        subprocess.run(("gmx_mpi pdb2gmx "
+                        f"-f {pdb_file} "
+                        f"-o {out_name}.gro "
+                        f"-p {out_name}.top "
+                        f"-i {out_name}_posre.itp "
+                        "-ff amber14sb_gmx_s2p "
+                        "-water tip3p "
+                        "-ignh"),
+                       shell=True,
+                       check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
 
 
 def combine_gro(prot_path, lig_path, out_path=None):
@@ -187,17 +182,23 @@ def combine_top(prot_top, lig_top, lig_name=None, directory=None):
 def run_prep(out_dir, sys, lig, dif_size=False):
     # Copy the apo pdb
     try:
-        subprocess.call(['cp', f"{PREP_INPUTS}/prep.sh", out_dir])
-        subprocess.call(['cp', f"{PREP_INPUTS}/prep.mdp", out_dir])
+        subprocess.run(['cp', f"{PREP_INPUTS}/prep.sh", out_dir], check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    try:
+        subprocess.run(['cp', f"{PREP_INPUTS}/prep.mdp", out_dir], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # Define number of Protein+X group
-    # group_N = 17 if sys == 'a2b1' and lig in ['A769', 'PF739', 'MT47', 'MK87'] else 22
+    # group_N = 17 if sys == 'a2b1'
+    # and lig in ['A769', 'PF739', 'MT47', 'MK87'] else 22
     # Uncharged system = 17, charged system = 22, with added ions = 24
     group_N = 24
     # Make_ndx command with custom number
-    new_line = f'echo -e "name {group_N} Protein_LIG \\n q" | $GMX make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx'
+    new_line = (f'echo -e "name {group_N} Protein_LIG \\n q" '
+                f'| $GMX make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx')
     # Add new line to prep.sh
     with open(f"{out_dir}/prep.sh", 'r') as f:
         lines = f.readlines()
@@ -211,15 +212,22 @@ def run_prep(out_dir, sys, lig, dif_size=False):
     with open(f"{out_dir}/prep.sh", 'w') as f:
         f.writelines(lines)
     # Run prep.sh
+    # try:
+        # sub = subprocess.Popen(f"cd {out_dir}; bash prep.sh",
+                               # stdout=subprocess.PIPE,
+                               # stderr=subprocess.STDOUT,
+                               # shell=True
+                               # )
+        # out, errors = sub.communicate()
+    # except:
+        # print('ERROR')
     try:
-        sub = subprocess.Popen(f"cd {out_dir}; bash prep.sh",
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT,
-                               shell=True
-                               )
-        out, errors = sub.communicate()
-    except:
-        print('ERROR')
+        subprocess.run(f"cd {out_dir}; bash prep.sh",
+                       shell=True,
+                       check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
 
 
 def fix_itp_includes(out_dir, sys,):
@@ -235,17 +243,33 @@ def fix_itp_includes(out_dir, sys,):
 
 def setup_minim(dd, sys, lig):
     try:
-        subprocess.call(['mkdir', "-p", f"{dd}/01-Min"])
+        subprocess.run(['mkdir', "-p", f"{dd}/01-Min"], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     try:
-        subprocess.call(f"cp {SCRIPT_DIR}/01-Min/* {dd}/01-Min/", shell=True)
-        subprocess.call(['cp', f"{dd}/00-Prep/{sys}+{lig}.top", f"{dd}/01-Min/"])
-        subprocess.call(['cp', f"{dd}/00-Prep/{sys}+{lig}.gro", f"{dd}/01-Min/"])
-        subprocess.call(['cp', f"{dd}/00-Prep/i.ndx", f"{dd}/01-Min/"])
+        subprocess.run(f"cp {SCRIPT_DIR}/01-Min/* {dd}/01-Min/",
+                       shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    files = [
+      {sys}+{lig}.top"
+      {sys}+{lig}.gro"
+      'i.ndx'
+      '*.itp'
+    for fn in files:
+        try:
+            subprocess.call(['cp',
+                             f"{dd}/00-Prep/{fn}",
+                             f"{dd}/01-Min/"],
+                             check=True)
+        except subprocess.CalledProcessError as error:
+            print('Error code:', error.returncode,
+                '. Output:', error.output.decode("utf-8"))
+        
+
         subprocess.call(['cp', '-r', '/home/rhys/AMPK/Metad_Simulations/System_Setup/force_field_S2P/amber14sb_gmx_s2p.ff', f"{dd}/01-Min/"])
-        subprocess.call(f"cp {dd}/00-Prep/*.itp {dd}/01-Min/", shell=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))

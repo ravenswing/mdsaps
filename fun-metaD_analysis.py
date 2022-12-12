@@ -1,9 +1,11 @@
 """
 ===============================================================================
-                                TRAJECTORY TOOLS
+                                Fun-METAD ANALYSIS
 ===============================================================================
 
-    - PyTraj based analysis tools for Amber trajectories
+    - Analysis
+    - Plotting
+    - Calculations
 """
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,7 +40,9 @@ def run_sumhills(wd, name, stride=None):
     if stride is not None:
         cmd += f" --stride {stride}"
     try:
-        subprocess.call(cmd, shell=True)
+        subprocess.run(cmd,
+                       shell=True,
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
