@@ -29,7 +29,7 @@ ANG = "\u212B"
 
 DATA_DIR = '/media/rhys/Storage/ampk_metad_all_data'
 SYSTS = ['a2b1', 'a2b2']
-LIGS = ['A769', 'PF739', 'SC4', 'MT47']
+LIGS = ['A769', 'PF739', 'SC4', 'MT47', 'MK87']
 
 # Where to put the plots and other results
 SAVE_DIR = '/home/rhys/AMPK/Figures'
@@ -166,16 +166,26 @@ def new_strideplot(wd, name, stride=50, to_use=[0, 1, 2], basins=None):
 
 
 if __name__ == "__main__":
+    SYSTS = ['a2b1']
+    LIGS = ['A769']
     for system in SYSTS:
         for lig in LIGS:
-            wd = f"{DATA_DIR}/{system}+{lig}/R1/06-MetaD"
-            # run_sumhills(wd, f"{system}+{lig}", stride=125000)
-            new_strideplot(wd,
-                           f"{system}+{lig}",
-                           stride=250,
-                           #                   proj       ext
-                           basins={'bound':   [0.0, 1.0, 0.0, 0.75],
-                                   'unbound': [3.5, 4.5, 0.0, 0.5]})
+            for rep in np.arange(1)+1:
+                print(system, lig, rep)
+                # Define the working directory for each analysis
+                wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/R{rep}"
+                # Create a final FES from the HILLS file
+                run_sumhills(wd, f"{system}+{lig}")
+                # Create a FES over time (every 125 ns)
+                run_sumhills(wd, f"{system}+{lig}", stride=125000)
+                '''
+                new_strideplot(wd,
+                            f"{system}+{lig}",
+                            stride=250,
+                            #                   proj       ext
+                            basins={'bound':   [0.0, 1.0, 0.0, 0.75],
+                                    'unbound': [3.5, 4.5, 0.0, 0.5]})
 
 
-    # fes_multiplot()
+        # fes_multiplot()
+        '''
