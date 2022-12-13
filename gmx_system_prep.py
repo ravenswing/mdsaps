@@ -16,17 +16,17 @@ import numpy as np
 import parmed as pmd
 import pytraj as pt
 
-PREP_INPUTS = '/home/rhys/phd_tools/simulation_files/submission_scripts/Local_Dirs/00-Prep'
+PREP_INPUTS = ('/home/rhys/phd_tools/simulation_files/'
+               'submission_scripts/Local_Dirs/00-Prep')
 OUT_DIR = '/home/rhys/Storage/ampk_metad_all_data'
 PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
-SCRIPT_DIR = '/home/rhys/phd_tools/simulation_files/submission_scripts/MareNostrum/class_a'
+SCRIPT_DIR = ('/home/rhys/phd_tools/simulation_files/'
+              'submission_scripts/MareNostrum/class_a')
 REMOTE = 'mn:/home/ub183/ub183944/scratch/ampk_replicas'
 
 SYSTS = ['a2b1', 'a2b2']
-#SYSTS = ['a2b2']
-#LIGS = [ 'A769']
-#LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
-LIGS = ['MK87', 'MT47']
+LIGS = ['A769']
+# LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
 
 
 def make_dirs(name, sys, lig):
@@ -38,13 +38,19 @@ def make_dirs(name, sys, lig):
               '. Output:', error.output.decode("utf-8"))
     # Copy in the apo pdb
     try:
-        subprocess.run(['cp', f"/home/rhys/AMPK/Metad_Simulations/System_Setup/apo/{sys}_apo.pdb", name], check=True)
+        subprocess.run(['cp',
+                        ('/home/rhys/AMPK/Metad_Simulations/System_Setup/'
+                         f"apo/{sys}_apo.pdb"),
+                        name], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # Copy in the ligand pdb
     try:
-        subprocess.run(['cp', f"/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_pdbs_4_gmx/{lig}_4_{sys}_4_gmx.pdb", name], check=True)
+        subprocess.run(['cp',
+                        ('/home/rhys/AMPK/Metad_Simulations/System_Setup/'
+                         f"ligand_pdbs_4_gmx/{lig}_4_{sys}_4_gmx.pdb"),
+                        name], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -70,9 +76,11 @@ def run_tleap(lig, pdb_path):
     lig_params = f"{PARM_DIR}/{lig}"
 
     ffi_lines = 'source leaprc.gaff'
-    lig_lines = f"loadamberparams {lig_params}.frcmod\nloadamberprep {lig_params}.prep"
+    lig_lines = (f"loadamberparams {lig_params}.frcmod\n"
+                 f"loadamberprep {lig_params}.prep")
     pdb_lines = f"struc = loadpdb {pdb_path}"
-    out_lines = f"saveamberparm struc {wd}/{lig}_amb.top {wd}/{lig}_amb.crd\nsavepdb struc {wd}/{lig}_leap.pdb"
+    out_lines = (f"saveamberparm struc {wd}/{lig}_amb.top {wd}/{lig}_amb.crd\n"
+                 f"savepdb struc {wd}/{lig}_leap.pdb")
 
     with open('./temp.tleap', 'w+') as f:
         f.write('\n'.join([ffi_lines, lig_lines,
@@ -122,21 +130,29 @@ def combine_gro(prot_path, lig_path, out_path=None):
     with open(lig_path, 'r') as f:
         ligand_gro = f.readlines()
     # Find the total number of atoms that the new gro will have
-    total = (int(ligand_gro[1].split('\n')[0]) + int(protein_gro[1].split('\n')[0]))
+    total = (int(ligand_gro[1].split('\n')[0])
+             + int(protein_gro[1].split('\n')[0]))
     print(total)
     # Save that total as the start of the document
     line2 = ' '+str(total)+'\n'
-    # Combine the the new total, the protein and ligand gro files 
-    both_gro = chain(protein_gro[0], line2, protein_gro[2:-1], ligand_gro[2:-1], protein_gro[-1])
+    # Combine the the new total, the protein and ligand gro files
+    both_gro = chain(protein_gro[0],
+                     line2,
+                     protein_gro[2:-1],
+                     ligand_gro[2:-1],
+                     protein_gro[-1])
     # Write the combined file to a new or custom path
-    out_name = out_path if out_path else f"{'/'.join(lig_path.split('/')[:-1])}/{(prot_path.split('/')[-1][:-4])}+{(lig_path.split('/')[-1][:-4])}_built.gro"
+    op = (f"{'/'.join(lig_path.split('/')[:-1])}/"
+          f"{(prot_path.split('/')[-1][:-4])}"
+          f"+{(lig_path.split('/')[-1][:-4])}_built.gro")
+    out_name = out_path if out_path else op
     with open(out_name, 'w+') as f:
         f.writelines(str(line) for line in both_gro)
 
 
 def combine_top(prot_top, lig_top, lig_name=None, directory=None):
     # Set the output path if not pre-defined
-    out_path = directory if directory else f"{'/'.join(lig_top.split('/')[:-1])}"
+    out = directory if directory else f"{'/'.join(lig_top.split('/')[:-1])}"
     # Load the protein .top file
     with open(prot_top) as f:
         pro = f.readlines()
@@ -145,21 +161,22 @@ def combine_top(prot_top, lig_top, lig_name=None, directory=None):
         d = '['
         lig = [d+e for e in f.read().split(d) if e]
     # Put ligand atomtypes in a separate .itp file
-    with open(f"{out_path}/ligand_atomtypes.itp", 'w') as f:
+    with open(f"{out}/ligand_atomtypes.itp", 'w') as f:
         f.write([st for st in lig if 'atomtypes' in st][0])
     # Remove all necessary sections from ligand topology
     remove = ['defaults', 'atomtypes', 'molecules', 'system']
     include = '\n'.join([st for st in lig[1:]
                          if not any(x in st for x in remove)])
     # Write the remainder to the ligand itp file
-    with open(f"{out_path}/ligand.itp", 'w+') as f:
+    with open(f"{out}/ligand.itp", 'w+') as f:
         f.write(include)
     # Extract the ligand residue name from the ligand topology
     lig_res_name = lig_name if lig_name else [
         st for st in lig if 'moleculetype' in st][0].split('\n')[2].split()[0]
     print(f"Using Ligand: {lig_res_name}")
     # Define new lines to add to prot topology, with include lines and comments
-    include1 = '; Include ligand atom types \n#include \"./ligand_atomtypes.itp\" \n\n'
+    include1 = ('; Include ligand atom types \n'
+                '#include \"./ligand_atomtypes.itp\" \n\n')
     include2 = '; Include ligand topology   \n#include \"./ligand.itp\" \n\n'
     # Also a line for the very bottom of the file
     # to add to the [molecules] entry
@@ -174,7 +191,8 @@ def combine_top(prot_top, lig_top, lig_name=None, directory=None):
                     pro[n1:n2], include2,
                     pro[n2:], include3)
     # Write the combined file to a new or custom path
-    out_name = f"{out_path}/{(prot_top.split('/')[-1][:-4])}+{(lig_top.split('/')[-1][:-4])}.top"
+    out_name = (f"{out}/{(prot_top.split('/')[-1][:-4])}"
+                f"+{(lig_top.split('/')[-1][:-4])}.top")
     with open(out_name, 'w+') as f:
         f.writelines(str(line) for line in new_top)
 
@@ -253,29 +271,31 @@ def setup_minim(dd, sys, lig):
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
-    files = [
-      {sys}+{lig}.top"
-      {sys}+{lig}.gro"
-      'i.ndx'
-      '*.itp'
+    files = [f"{sys}+{lig}.top",
+             f"{sys}+{lig}.gro",
+             'i.ndx',
+             '*.itp']
     for fn in files:
         try:
-            subprocess.call(['cp',
-                             f"{dd}/00-Prep/{fn}",
-                             f"{dd}/01-Min/"],
-                             check=True)
+            subprocess.run(f"cp {dd}/00-Prep/{fn} {dd}/01-Min/",
+                           check=True,
+                           shell=True)
         except subprocess.CalledProcessError as error:
             print('Error code:', error.returncode,
-                '. Output:', error.output.decode("utf-8"))
-        
-
-        subprocess.call(['cp', '-r', '/home/rhys/AMPK/Metad_Simulations/System_Setup/force_field_S2P/amber14sb_gmx_s2p.ff', f"{dd}/01-Min/"])
+                  '. Output:', error.output.decode("utf-8"))
+    try:
+        subprocess.run(['cp -r',
+                        ('/home/rhys/AMPK/Metad_Simulations/System_Setup/'
+                         'force_field_S2P/amber14sb_gmx_s2p.ff'),
+                        f"{dd}/01-Min/"],
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     try:
-        subprocess.call(f"rsync -avzhPu {dd}/01-Min {REMOTE}/{sys}+{lig}/",
-                        shell=True)
+        subprocess.run(f"rsync -avzhPu {dd}/01-Min {REMOTE}/{sys}+{lig}/",
+                       check=True,
+                       shell=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -285,7 +305,10 @@ def next_step(ndir):
     for sys in SYSTS:
         for lig in LIGS:
             try:
-                subprocess.call(f"rsync -avzhPu {SCRIPT_DIR}/{ndir} {REMOTE}/{sys}+{lig}/", shell=True)
+                subprocess.run((f"rsync -avzhPu {SCRIPT_DIR}/{ndir}"
+                                f"{REMOTE}/{sys}+{lig}/"),
+                               check=True,
+                               shell=True)
             except subprocess.CalledProcessError as error:
                 print('Error code:', error.returncode,
                       '. Output:', error.output.decode("utf-8"))
@@ -311,13 +334,20 @@ def make_plumed(source_dat, ref_pdb, out_dat):
     p1 = [4863, 662] if 'a2b1' in ref_pdb else [4885, 662]
 
     # Generic lines for readability
-    header1 = '#####################################\n#plumed.dat for Funnel MetaD#\n#####################################\n'
+    header1 = ('#####################################\n'
+               '#    plumed.dat for Funnel MetaD    #\n'
+               '#####################################\n')
     restart = '#RESTART'
-    header2 = '\n\n\n###############################################\n###DEFINE RADIUS + CALC PROT-LIG VECTOR COMP###\n###############################################\n'
-    header3 = '\n\n\n########################\n###DEFINITION_OF_COMs###\n########################\n'
+    header2 = ('\n\n\n###############################################\n'
+               '#  DEFINE RADIUS + CALC PROT-LIG VECTOR COMP  #\n'
+               '###############################################\n')
+    header3 = ('\n\n\n##########################\n'
+               '#   DEFINITION_OF_COMs   #\n'
+               '##########################\n')
 
     # WholeMolecules line that seperates ligand and protein into 2 entities
-    WHMline = f"WHOLEMOLECULES STRIDE=1 ENTITY0={protN[0]}-{protN[1]} ENTITY1={ligN[0]}-{ligN[1]}"
+    WHMline = (f"WHOLEMOLECULES STRIDE=1 ENTITY0={protN[0]}-{protN[1]} "
+               f"ENTITY1={ligN[0]}-{ligN[1]}")
     # Ligand atoms
     LIGline = f"lig: COM ATOMS={ligN[0]}-{ligN[1]}"
     # Funnel anchor points
@@ -349,6 +379,8 @@ if __name__ == "__main__":
         for lig in LIGS:
             # wd = f"{OUT_DIR}/{system}+{lig}/00-Prep"
             wd = f"{OUT_DIR}/{system}+{lig}/06-MetaD"
+
+            # This is to set up the system and run uMD
             '''
             print('running')
             make_dirs(wd, system, lig)
@@ -368,9 +400,10 @@ if __name__ == "__main__":
 
             next_step('02-NVT')
             next_step('0345-EQ-MD')
+            '''
 
-
-
+            # This section is to set up the MetaD
+            '''
             source_dat = '/home/rhys/AMPK/Metad_Simulations/System_Setup/metad_files/blank_metad.dat'
 
             try:
@@ -386,20 +419,36 @@ if __name__ == "__main__":
 
             make_plumed(source_dat, f"{OUT_DIR}/{system}+{lig}/0345-EQ-MD/{system}+{lig}_lastframe.pdb",
                         f"{wd}/plumed_{system}+{lig}.dat")
+            '''
+
+            # This section runs multiple replicas for metaD
+            '''
+            try:
+                subprocess.run(("rsync -avzhPu"
+                                f"{wd}"
+                                f"{REMOTE}/R2/{system}+{lig}/"),
+                               check=True,
+                               shell=True)
+            except subprocess.CalledProcessError as error:
+                print('Error code:', error.returncode,
+                      '. Output:', error.output.decode("utf-8"))
+            try:
+                subprocess.run(("rsync -avzhPu"
+                                f"{wd}"
+                                f"{REMOTE}/R3/{system}+{lig}/"),
+                               check=True,
+                               shell=True)
+            except subprocess.CalledProcessError as error:
+                print('Error code:', error.returncode,
+                      '. Output:', error.output.decode("utf-8"))
 
             try:
-                subprocess.call(f"rsync -avzhPu {wd} {REMOTE}/R2/{system}+{lig}/", shell=True)
+                subprocess.run(("rsync -avzhPu"
+                                f"{wd}"
+                                f"{REMOTE}/R4/{system}+{lig}/"),
+                               check=True,
+                               shell=True)
             except subprocess.CalledProcessError as error:
                 print('Error code:', error.returncode,
                       '. Output:', error.output.decode("utf-8"))
-            try:
-                subprocess.call(f"rsync -avzhPu {wd} {REMOTE}/R3/{system}+{lig}/", shell=True)
-            except subprocess.CalledProcessError as error:
-                print('Error code:', error.returncode,
-                      '. Output:', error.output.decode("utf-8"))
-'''
-            try:
-                subprocess.call(f"rsync -avzhPu {wd} {REMOTE}/R4/{system}+{lig}/", shell=True)
-            except subprocess.CalledProcessError as error:
-                print('Error code:', error.returncode,
-                      '. Output:', error.output.decode("utf-8"))
+            '''
