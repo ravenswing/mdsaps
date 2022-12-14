@@ -25,6 +25,9 @@ from math import floor
 import MDAnalysis as mda
 from MDAnalysis.analysis import diffusionmap, align, rms
 
+sys.path.append('/home/rhys/phd_tools/SAPS')
+import analysis_tools as at
+
 ANG = "\u212B"
 
 DATA_DIR = '/media/rhys/Storage/ampk_metad_all_data'
@@ -166,18 +169,78 @@ def new_strideplot(wd, name, stride=50, to_use=[0, 1, 2], basins=None):
 
 
 if __name__ == "__main__":
-    SYSTS = ['a2b1']
-    LIGS = ['A769']
+
+    ligand_res_names = {'A769': 'MOL',
+                        'PF739': 'PF',
+                        'SC4': 'SC',
+                        'MT47': 'MOL',
+                        'MK87': 'MOL'}
+
+    i = 0
     for system in SYSTS:
         for lig in LIGS:
-            for rep in np.arange(1)+1:
+            for rep in ['R'+str(x) for x in np.arange(1)+1]:
                 print(system, lig, rep)
                 # Define the working directory for each analysis
-                wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/R{rep}"
+                wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}"
+                '''
                 # Create a final FES from the HILLS file
                 run_sumhills(wd, f"{system}+{lig}")
-                # Create a FES over time (every 125 ns)
+                # Create a FES over time (every 250 ns)
                 run_sumhills(wd, f"{system}+{lig}", stride=125000)
+                '''
+
+                new_data = at.measure_rmsd(f"{wd}/md_dry.pdb",
+                    f"{wd}/metad_{system}+{lig}_final.xtc",
+                    f"{wd}/md_dry.pdb",
+                    [f"resname {ligand_res_names[lig]} and not name H*"]).run()
+
+                # backbone:
+                inp = pd.DataFrame(columns=['t', rep],
+                                   data=new_data.rmsd[:, [1, 2]]).set_index('t')
+                inp_l = pd.concat({lig: inp}, axis=1)
+                inp_s = pd.concat({system: inp_l}, axis=1)
+                if i == 0:
+                    inp_s.to_hdf(f"{DATA_DIR}/backbone_rmsd.h5", key='df')
+                    continue
+                else:
+                    new = pd.read_hdf(f"{DATA_DIR}/backbone_rmsd.h5", key='df')
+                if any([(mi == inp_s.columns)[0] for mi in new.columns]):
+                    print("Updating values in DataFrame.")
+                    new.update(inp_s)
+                else:
+                    print("Adding new values to DataFrame.")
+                    new = new.join(inp_s)
+                # reorder columns
+                new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
+                new.to_hdf(f"{DATA_DIR}/backbone_rmsd.h5", key='df')
+
+                # ligands:
+                inp2 = pd.DataFrame(columns=['t', rep],
+                                    data=new_data.rmsd[:, [1, 3]]).set_index('t')
+                inp_l2 = pd.concat({lig: inp2}, axis=1)
+                inp_s2 = pd.concat({system: inp_l2}, axis=1)
+
+                if i == 0:
+                    inp_s2.to_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
+                    continue
+                else:
+                    new2 = pd.read_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
+
+                if any([(mi == inp_s2.columns)[0] for mi in new2.columns]):
+                    print("Updating values in DataFrame.")
+                    new2.update(inp_s2)
+                else:
+                    print("Adding new values to DataFrame.")
+                    new2 = new2.join(inp_s2)
+
+                # reorder columns
+                new2 = new2.iloc[:, new2.columns.sortlevel(0, sort_remaining=True)[1]]
+
+                new2.to_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
+
+                i += 1
+
                 '''
                 new_strideplot(wd,
                             f"{system}+{lig}",

@@ -1,6 +1,6 @@
 """
 ===============================================================================
-                                TRAJECTORY TOOLS
+                                AMBER TRAJECTORY TOOLS
 ===============================================================================
 
     - PyTraj based analysis tools for Amber trajectories
