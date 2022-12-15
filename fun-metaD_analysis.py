@@ -51,32 +51,62 @@ def run_sumhills(wd, name, stride=None):
               '. Output:', error.output.decode("utf-8"))
 
 
-def fes_multiplot(cmax=32):
-    fig, ax = plt.subplots(4, 2, figsize=(25, 30))
-#     fig.tight_layout(h_pad=4)
-    plt.suptitle('FES for 500ns Fun-MetaD')
-    plt.subplots_adjust(top=0.94, right=0.915)
-    funnel_parms = {'lw': 0.0,
-                    'uw': 4.5,
-                    'sc': 2.5,
-                    'b': 1.0,
-                    'f': 0.15,
-                    'h': 1.5}
-    i = 0
-    for lig in LIGS:
-        j = 0
-        for system in SYSTS:
-            data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{system}+{lig}_FES', False)
-            cmap = graphics.two_cv_contour(data, labels, cmax, ax[i, j], funnel_parms)
-            ax[i, j].set_title(f"{system}+{lig}")
-            ax[i, j].set_xlabel(f"{labels[0]} / nm")
-            ax[i, j].set_ylabel(f"{labels[1]} / nm")
-            j += 1
-        i += 1
-    cax = plt.axes([0.93, 0.11, 0.01, 0.77])
-    cbar = plt.colorbar(cmap, cax=cax, aspect=10, ticks=np.arange(0., cmax+1, 2.0))
-    cbar.set_label('Free Energy / kcal/mol', fontsize=10)
-    fig.savefig(f'{SAVE_DIR}/FES_multi.png', dpi=300, bbox_inches='tight')
+def fes_multiplot(cmax=32, replicas=False):
+    if replicas:
+        for rep in ['R'+str(x) for x in np.arange(3)+1]:
+            fig, ax = plt.subplots(5, 2, figsize=(25, 30))
+        #     fig.tight_layout(h_pad=4)
+            t = 750 if rep == 'R1' else 500
+            plt.suptitle(f'FES for {t}ns Fun-MetaD ({rep})')
+            plt.subplots_adjust(top=0.94, right=0.915)
+            funnel_parms = {'lw': 0.0,
+                            'uw': 4.5,
+                            'sc': 2.5,
+                            'b': 1.0,
+                            'f': 0.15,
+                            'h': 1.5}
+            i = 0
+            for lig in LIGS:
+                j = 0
+                for system in SYSTS:
+                    data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
+                    cmap = graphics.two_cv_contour(data, labels, cmax, ax[i, j], funnel_parms)
+                    ax[i, j].set_title(f"{system}+{lig}")
+                    ax[i, j].set_xlabel(f"{labels[0]} / nm")
+                    ax[i, j].set_ylabel(f"{labels[1]} / nm")
+                    j += 1
+                i += 1
+            cax = plt.axes([0.93, 0.11, 0.01, 0.77])
+            cbar = plt.colorbar(cmap, cax=cax, aspect=10, ticks=np.arange(0., cmax+1, 2.0))
+            cbar.set_label('Free Energy / kcal/mol', fontsize=10)
+            fig.savefig(f'{SAVE_DIR}/FES_multi_{rep}.png', dpi=300, bbox_inches='tight')
+
+    else:
+        fig, ax = plt.subplots(4, 2, figsize=(25, 30))
+    #     fig.tight_layout(h_pad=4)
+        plt.suptitle('FES for 500ns Fun-MetaD')
+        plt.subplots_adjust(top=0.94, right=0.915)
+        funnel_parms = {'lw': 0.0,
+                        'uw': 4.5,
+                        'sc': 2.5,
+                        'b': 1.0,
+                        'f': 0.15,
+                        'h': 1.5}
+        i = 0
+        for lig in LIGS:
+            j = 0
+            for system in SYSTS:
+                data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{system}+{lig}_FES', False)
+                cmap = graphics.two_cv_contour(data, labels, cmax, ax[i, j], funnel_parms)
+                ax[i, j].set_title(f"{system}+{lig}")
+                ax[i, j].set_xlabel(f"{labels[0]} / nm")
+                ax[i, j].set_ylabel(f"{labels[1]} / nm")
+                j += 1
+            i += 1
+        cax = plt.axes([0.93, 0.11, 0.01, 0.77])
+        cbar = plt.colorbar(cmap, cax=cax, aspect=10, ticks=np.arange(0., cmax+1, 2.0))
+        cbar.set_label('Free Energy / kcal/mol', fontsize=10)
+        fig.savefig(f'{SAVE_DIR}/FES_multi.png', dpi=300, bbox_inches='tight')
 
 
 def fes_strideplot(wd, name, cmax=32, stride=50, to_use=[0, 1, 2]):
@@ -168,6 +198,64 @@ def new_strideplot(wd, name, stride=50, to_use=[0, 1, 2], basins=None):
                 bbox_inches='tight')
 
 
+def fes_replicas(basins=None):
+    for rep in ['R'+str(x) for x in np.arange(3)+1]:
+        fig, ax = plt.subplots(5, 2, figsize=(25, 30))
+        # fig.tight_layout(h_pad=4)
+        t = 750 if rep == 'R1' else 500
+        plt.suptitle(f'FES for {t}ns Fun-MetaD ({rep})')
+        plt.subplots_adjust(top=0.85, right=0.915)
+        funnel_parms = {'lw': 0.0,
+                        'uw': 4.5,
+                        'sc': 2.5,
+                        'b': 1.0,
+                        'f': 0.15,
+                        'h': 1.5}
+        max_vals = []
+        for lig in LIGS:
+            for system in SYSTS:
+                data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
+                data[2] = data[2]/4.184
+                max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+                max_vals.append(max_non_inf)
+                print('VMAX: ', max_non_inf)
+        print(f"using: {max(max_vals)}")
+        cmax = max(max_vals)+1
+
+        i = 0
+        for lig in LIGS:
+            j = 0
+            for system in SYSTS:
+                data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
+                data[2] = data[2]/4.184
+                max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+                data[2] = data[2] + (max(max_vals) - max_non_inf)
+                data[2] = data[2]*4.184
+                cmap = graphics.two_cv_contour(data, labels, cmax, ax[i, j], funnel_parms)
+                ax[i, j].set_title(f"{system}+{lig}")
+                ax[i, j].set_xlabel(f"{labels[0]} / nm")
+                ax[i, j].set_ylabel(f"{labels[1]} / nm")
+                if basins is not None:
+                    b1 = plt.Rectangle((basins['bound'][0], basins['bound'][2]),
+                                    (basins['bound'][1] - basins['bound'][0]),
+                                    basins['bound'][3],
+                                    ls='--', fc='none', ec='k', lw=2.0)
+                    ax[i, j].add_patch(b1)
+                    b2 = plt.Rectangle((basins['unbound'][0], basins['unbound'][2]),
+                                    (basins['unbound'][1] - basins['unbound'][0]),
+                                    basins['unbound'][3],
+                                    ls='--', fc='none', ec='k', lw=2.0)
+                    ax[i, j].add_patch(b2)
+                j += 1
+            i += 1
+        cax = plt.axes([0.93, 0.11, 0.01, 0.77])
+        cbar = plt.colorbar(cmap, cax=cax, aspect=10,
+                            ticks=np.arange(0., cmax, 2.0))
+        cbar.set_label('Free Energy / kcal/mol', fontsize=10)
+        fig.savefig(f'{SAVE_DIR}/REP{rep}_FES_multi.png', dpi=300,
+                    bbox_inches='tight')
+
+
 if __name__ == "__main__":
 
     ligand_res_names = {'A769': 'MOL',
@@ -179,7 +267,7 @@ if __name__ == "__main__":
     i = 0
     for system in SYSTS:
         for lig in LIGS:
-            for rep in ['R'+str(x) for x in np.arange(1)+1]:
+            for rep in ['R'+str(x) for x in np.arange(3)+1]:
                 print(system, lig, rep)
                 # Define the working directory for each analysis
                 wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}"
@@ -190,6 +278,7 @@ if __name__ == "__main__":
                 run_sumhills(wd, f"{system}+{lig}", stride=125000)
                 '''
 
+                '''
                 new_data = at.measure_rmsd(f"{wd}/md_dry.pdb",
                     f"{wd}/metad_{system}+{lig}_final.xtc",
                     f"{wd}/md_dry.pdb",
@@ -197,14 +286,26 @@ if __name__ == "__main__":
 
                 # backbone:
                 inp = pd.DataFrame(columns=['t', rep],
-                                   data=new_data.rmsd[:, [1, 2]]).set_index('t')
+                                   data=new_data.results.rmsd[:, [1, 2]]).set_index('t')
                 inp_l = pd.concat({lig: inp}, axis=1)
                 inp_s = pd.concat({system: inp_l}, axis=1)
+
+                # ligands:
+                inp2 = pd.DataFrame(columns=['t', rep],
+                                    data=new_data.results.rmsd[:, [1, 3]]).set_index('t')
+                inp_l2 = pd.concat({lig: inp2}, axis=1)
+                inp_s2 = pd.concat({system: inp_l2}, axis=1)
+
                 if i == 0:
+                    print('First time --> Creating Files')
                     inp_s.to_hdf(f"{DATA_DIR}/backbone_rmsd.h5", key='df')
+                    inp_s2.to_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
+                    i += 1
                     continue
-                else:
-                    new = pd.read_hdf(f"{DATA_DIR}/backbone_rmsd.h5", key='df')
+                print('Further time --> Reading Files & Adding Data')
+                new = pd.read_hdf(f"{DATA_DIR}/backbone_rmsd.h5", key='df')
+                new2 = pd.read_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
+
                 if any([(mi == inp_s.columns)[0] for mi in new.columns]):
                     print("Updating values in DataFrame.")
                     new.update(inp_s)
@@ -215,32 +316,17 @@ if __name__ == "__main__":
                 new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
                 new.to_hdf(f"{DATA_DIR}/backbone_rmsd.h5", key='df')
 
-                # ligands:
-                inp2 = pd.DataFrame(columns=['t', rep],
-                                    data=new_data.rmsd[:, [1, 3]]).set_index('t')
-                inp_l2 = pd.concat({lig: inp2}, axis=1)
-                inp_s2 = pd.concat({system: inp_l2}, axis=1)
-
-                if i == 0:
-                    inp_s2.to_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
-                    continue
-                else:
-                    new2 = pd.read_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
-
                 if any([(mi == inp_s2.columns)[0] for mi in new2.columns]):
                     print("Updating values in DataFrame.")
                     new2.update(inp_s2)
                 else:
                     print("Adding new values to DataFrame.")
                     new2 = new2.join(inp_s2)
-
                 # reorder columns
                 new2 = new2.iloc[:, new2.columns.sortlevel(0, sort_remaining=True)[1]]
-
                 new2.to_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
 
-                i += 1
-
+                '''
                 '''
                 new_strideplot(wd,
                             f"{system}+{lig}",
@@ -250,5 +336,5 @@ if __name__ == "__main__":
                                     'unbound': [3.5, 4.5, 0.0, 0.5]})
 
 
-        # fes_multiplot()
         '''
+    fes_replicas(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})
