@@ -35,7 +35,7 @@ SYSTS = ['a2b1', 'a2b2']
 LIGS = ['A769', 'PF739', 'SC4', 'MT47', 'MK87']
 
 # Where to put the plots and other results
-SAVE_DIR = '/home/rhys/AMPK/Figures'
+SAVE_DIR = '/home/rhys/Dropbox/RESEARCH/Project_AMPK/Figures/New_Replica_Plots'
 
 
 def run_sumhills(wd, name, stride=None):
@@ -198,13 +198,13 @@ def new_strideplot(wd, name, stride=50, to_use=[0, 1, 2], basins=None):
                 bbox_inches='tight')
 
 
-def fes_replicas(basins=None):
+def fes_by_replica(basins=None):
     for rep in ['R'+str(x) for x in np.arange(3)+1]:
         fig, ax = plt.subplots(5, 2, figsize=(25, 30))
-        # fig.tight_layout(h_pad=4)
-        t = 750 if rep == 'R1' else 500
-        plt.suptitle(f'FES for {t}ns Fun-MetaD ({rep})')
-        plt.subplots_adjust(top=0.85, right=0.915)
+        fig.tight_layout(h_pad=4, v_pad=2)
+        #t = 750 if rep == 'R1' else 500
+        plt.suptitle(f'FES for Fun-MetaD ({rep})')
+        plt.subplots_adjust(top=0.95, right=0.915)
         funnel_parms = {'lw': 0.0,
                         'uw': 4.5,
                         'sc': 2.5,
@@ -232,7 +232,8 @@ def fes_replicas(basins=None):
                 data[2] = data[2] + (max(max_vals) - max_non_inf)
                 data[2] = data[2]*4.184
                 cmap = graphics.two_cv_contour(data, labels, cmax, ax[i, j], funnel_parms)
-                ax[i, j].set_title(f"{system}+{lig}")
+                t = len(data[2])/500
+                ax[i, j].set_title(f"{system}+{lig} (t = {t}ns)")
                 ax[i, j].set_xlabel(f"{labels[0]} / nm")
                 ax[i, j].set_ylabel(f"{labels[1]} / nm")
                 if basins is not None:
@@ -248,12 +249,69 @@ def fes_replicas(basins=None):
                     ax[i, j].add_patch(b2)
                 j += 1
             i += 1
-        cax = plt.axes([0.93, 0.11, 0.01, 0.77])
+        cax = plt.axes([0.98, 0.11, 0.01, 0.77])
         cbar = plt.colorbar(cmap, cax=cax, aspect=10,
                             ticks=np.arange(0., cmax, 2.0))
         cbar.set_label('Free Energy / kcal/mol', fontsize=10)
-        fig.savefig(f'{SAVE_DIR}/REP{rep}_FES_multi.png', dpi=300,
+        fig.savefig(f'{SAVE_DIR}/{rep}_FES_multi.png', dpi=300,
                     bbox_inches='tight')
+
+
+def fes_by_system(basins=None):
+    for lig in LIGS:
+        for system in SYSTS:
+            fig, ax = plt.subplots(1, 3, figsize=(24, 6))
+            plt.suptitle(f'FES for Fun-MetaD ({system} + {lig})')
+            plt.subplots_adjust(top=0.85, right=0.915)
+            funnel_parms = {'lw': 0.0,
+                            'uw': 4.5,
+                            'sc': 2.5,
+                            'b': 1.0,
+                            'f': 0.15,
+                            'h': 1.5}
+
+            max_vals = []
+            for rep in ['R'+str(x) for x in np.arange(3)+1]:
+                data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
+                data[2] = data[2]/4.184
+                max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+                max_vals.append(max_non_inf)
+                print('VMAX: ', max_non_inf)
+            print(f"using: {max(max_vals)}")
+            cmax = max(max_vals)+1
+
+            i = 0
+            for rep in ['R'+str(x) for x in np.arange(3)+1]:
+                data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
+                data[2] = data[2]/4.184
+                max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+                data[2] = data[2] + (max(max_vals) - max_non_inf)
+                data[2] = data[2]*4.184
+                cmap = graphics.two_cv_contour(data, labels, cmax, ax[i], funnel_parms)
+                t = len(data[2])/500
+                ax[i].set_title(f"{system}+{lig} (t = {t}ns)")
+                ax[i].set_xlabel(f"{labels[0]} / nm")
+                ax[i].set_ylabel(f"{labels[1]} / nm")
+                if basins is not None:
+                    b1 = plt.Rectangle((basins['bound'][0], basins['bound'][2]),
+                                    (basins['bound'][1] - basins['bound'][0]),
+                                    basins['bound'][3],
+                                    ls='--', fc='none', ec='k', lw=2.0)
+                    ax[i].add_patch(b1)
+                    b2 = plt.Rectangle((basins['unbound'][0], basins['unbound'][2]),
+                                    (basins['unbound'][1] - basins['unbound'][0]),
+                                    basins['unbound'][3],
+                                    ls='--', fc='none', ec='k', lw=2.0)
+                    ax[i].add_patch(b2)
+                i += 1
+
+            cax = plt.axes([0.98, 0.11, 0.01, 0.77])
+            cbar = plt.colorbar(cmap, cax=cax, aspect=10,
+                                ticks=np.arange(0., cmax, 2.0))
+            cbar.set_label('Free Energy / kcal/mol', fontsize=10)
+            fig.savefig(f'{SAVE_DIR}/FES-by-System/{system}+{lig}_FES.png', dpi=450,
+                        bbox_inches='tight')
+
 
 
 if __name__ == "__main__":
@@ -269,9 +327,9 @@ if __name__ == "__main__":
         for lig in LIGS:
             for rep in ['R'+str(x) for x in np.arange(3)+1]:
                 print(system, lig, rep)
+                '''
                 # Define the working directory for each analysis
                 wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}"
-                '''
                 # Create a final FES from the HILLS file
                 run_sumhills(wd, f"{system}+{lig}")
                 # Create a FES over time (every 250 ns)
@@ -337,4 +395,5 @@ if __name__ == "__main__":
 
 
         '''
-    fes_replicas(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})
+    fes_by_replica(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})
+    fes_by_system(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})
