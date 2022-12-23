@@ -7,7 +7,6 @@
 import pandas as pd
 from glob import glob
 import subprocess
-import os
 
 
 VINA_EXEC = '/home/rhys/software/vina_1.2.3_linux_x86_64'
@@ -34,7 +33,7 @@ def _read_grid(dir_path):
     return centre, size
 
 
-def _run_vina(prot_path, lig_path, centre, size):
+def _run_vina(prot_path, lig_path, centre, size, out_dir):
     """ Run AutoDock Vina  """
     out_fn = (f"{prot_path.split('/')[-2]}/"
               + f"{prot_path.split('/')[-1].split('.')[0]}_out.pdbqt")
@@ -48,7 +47,7 @@ def _run_vina(prot_path, lig_path, centre, size):
                     f"--size_x {size[0]}",
                     f"--size_y {size[1]}",
                     f"--size_z {size[2]}",
-                    f"--out {DRBX_DIR}/Vina_Results/{out_fn}"]
+                    f"--out {out_dir}/{out_fn}"]
     # run vina
     try:
         subprocess.call(' '.join(vina_command), shell=True)
@@ -72,12 +71,12 @@ def _read_output(out_file):
     return results
 
 
-def process_pocket(pocket_dir):
+def process_pocket(pocket_dir, output_dir):
     c, s = _read_grid(pocket_dir)
     for system in SYSTEMS:
         for prot_file in sorted(glob(f"{pocket_dir}/ship*.pdbqt")):
 
-            _run_vina(prot_file, ligand_file, c, s)
+            _run_vina(prot_file, ligand_file, c, s, output_dir)
 
 
 def process_results(results_dir):
@@ -100,7 +99,7 @@ def process_results(results_dir):
     return data
 
 
-def create_csv(data):
+def create_csv(data, output_dir):
     # create csv
     for pocket in POCKETS:
         to_csv = []
@@ -122,7 +121,7 @@ def create_csv(data):
                 to_csv.append(d2 + '\n')
                 to_csv.append(d3 + '\n')
                 to_csv.append(d4 + '\n')
-        with open(f"./{pocket.lower()}_vina_output.csv", 'w') as f:
+        with open(f"{output_dir}/{pocket.lower()}_vina_output.csv", 'w') as f:
             f.writelines(to_csv)
 
 
@@ -135,15 +134,20 @@ if __name__ == '__main__':
     SYSTEMS = ['ship1', 'ship2']
 
     # ligand file is the same for all systems
-    ligand_file = f"{DRBX_DIR}/lig_paper_Ship.pdbqt"
+    # ligand_file = f"{DRBX_DIR}/lig_paper_Ship.pdbqt"
+    ligand_file = f"{DRBX_DIR}/lig_21.pdbqt"
+
+    output_dir = f"{DRBX_DIR}/LIG_21_Results"
+
+    """
     c, s = _read_grid(f"{DRBX_DIR}/Tunnel-Front_Pocket/")
     _run_vina(f"{DRBX_DIR}/Tunnel-Front_Pocket/ship1_R1_C3_Tunnel-FrontPocket.pdbqt",
               ligand_file,
               c, s)
+    """
 
-    """
-    for pocket in ['Tunnel-Front']:
+    for pocket in POCKETS:
         wd = f"{DRBX_DIR}/{pocket}_Pocket"
-        process_pocket(wd)
-    process_results(f"{DRBX_DIR}/Vina_Results")
-    """
+        process_pocket(wd, output_dir)
+    new_data = process_results(output_dir)
+    create_csv(new_data, output_dir)

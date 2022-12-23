@@ -201,7 +201,7 @@ def new_strideplot(wd, name, stride=50, to_use=[0, 1, 2], basins=None):
 def fes_by_replica(basins=None):
     for rep in ['R'+str(x) for x in np.arange(3)+1]:
         fig, ax = plt.subplots(5, 2, figsize=(25, 30))
-        fig.tight_layout(h_pad=4, v_pad=2)
+        fig.tight_layout(h_pad=4)
         #t = 750 if rep == 'R1' else 500
         plt.suptitle(f'FES for Fun-MetaD ({rep})')
         plt.subplots_adjust(top=0.95, right=0.915)
@@ -232,8 +232,9 @@ def fes_by_replica(basins=None):
                 data[2] = data[2] + (max(max_vals) - max_non_inf)
                 data[2] = data[2]*4.184
                 cmap = graphics.two_cv_contour(data, labels, cmax, ax[i, j], funnel_parms)
-                t = len(data[2])/500
-                ax[i, j].set_title(f"{system}+{lig} (t = {t}ns)")
+                with open(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/COLVAR', 'r') as f:
+                    t = float(f.readlines()[-1].split()[0])/1000
+                ax[i, j].set_title(f"{system}+{lig} (t = {t:.0f}ns)")
                 ax[i, j].set_xlabel(f"{labels[0]} / nm")
                 ax[i, j].set_ylabel(f"{labels[1]} / nm")
                 if basins is not None:
@@ -288,8 +289,9 @@ def fes_by_system(basins=None):
                 data[2] = data[2] + (max(max_vals) - max_non_inf)
                 data[2] = data[2]*4.184
                 cmap = graphics.two_cv_contour(data, labels, cmax, ax[i], funnel_parms)
-                t = len(data[2])/500
-                ax[i].set_title(f"{system}+{lig} (t = {t}ns)")
+                with open(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/COLVAR', 'r') as f:
+                    t = float(f.readlines()[-1].split()[0])/1000
+                ax[i].set_title(f"{system}+{lig} (t = {t:.0f}ns)")
                 ax[i].set_xlabel(f"{labels[0]} / nm")
                 ax[i].set_ylabel(f"{labels[1]} / nm")
                 if basins is not None:
@@ -313,6 +315,45 @@ def fes_by_system(basins=None):
                         bbox_inches='tight')
 
 
+def gismo_traj(wd, in_path, out_path, tpr='min.tpr', ndx='i.ndx'):
+    """ cutdown the trajectories using Gromacs trjconv ready for GISMO """
+    # call gmx trjconv with -dt 100 to cut down the trajectory
+    cmd = ("echo Backbone Protein_LIG | gmx_mpi trjconv "
+           f"-s {wd}/{tpr} "
+           f"-f {wd}/{in_path} "
+           f"-o {wd}/{out_path} "
+           f"-n {wd}/{ndx} "
+           "-fit rot+trans "
+           "-dt 100 ")
+    try:
+        subprocess.run(cmd,
+                       shell=True,
+                       check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+
+
+def gismo_colvar(wd, in_colvar='COLVAR', out_colvar='COLVAR_GISMO'):
+    """ combine old and reweighted colvars """
+    # Load in the original COLVAR
+    old_col = load.colvar(f"{wd}/{in_colvar}", 'as_pandas')
+
+    # Cutdown old COLVAR to match trajectories by selecting every 5th line
+    old_col = old_col.iloc[::5, :]
+    # Add every 10th line (and the second line) for GISMO colvar = 3503 lines
+    gis_col = old_col.iloc[:2, :]
+    gis_col = gis_col.append(old_col.iloc[10::10, :], ignore_index=True)
+
+    # Define path for the output GISMO COLVAR file
+    gismo_col_path = f"{wd}/{out_colvar}"
+    # Add the header line to this new COLVAR
+    with open(gismo_col_path, 'w') as f:
+        f.write("#! FIELDS "+" ".join(list(gis_col.columns.values))+"\n")
+    # Save the cutdown GISMO COLVAR
+    gis_col.to_csv(gismo_col_path, sep=" ", header=False, index=False, mode='a')
+    print(f"Successfully converted {in_colvar} to {out_colvar}.")
+
 
 if __name__ == "__main__":
 
@@ -325,11 +366,13 @@ if __name__ == "__main__":
     i = 0
     for system in SYSTS:
         for lig in LIGS:
-            for rep in ['R'+str(x) for x in np.arange(3)+1]:
-                print(system, lig, rep)
-                '''
+            # for rep in ['R'+str(x) for x in np.arange(3)+1]:
+            for rep in ['R2']:
                 # Define the working directory for each analysis
                 wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}"
+
+                '''
+                print(system, lig, rep)
                 # Create a final FES from the HILLS file
                 run_sumhills(wd, f"{system}+{lig}")
                 # Create a FES over time (every 250 ns)
@@ -392,8 +435,14 @@ if __name__ == "__main__":
                             #                   proj       ext
                             basins={'bound':   [0.0, 1.0, 0.0, 0.75],
                                     'unbound': [3.5, 4.5, 0.0, 0.5]})
-
-
         '''
+
+                gismo_traj(wd, f"metad_{system}+{lig}_final.xtc",
+                           f"{system}+{lig}_{rep}_GISMO.xtc")
+                gismo_colvar(wd,
+                             out_colvar=f"{system}+{lig}_{rep}_GISMO.colvar")
+
+    '''
     fes_by_replica(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})
     fes_by_system(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})
+    '''
