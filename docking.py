@@ -127,7 +127,7 @@ def create_csv(data, output_dir):
 
 if __name__ == '__main__':
 
-    DRBX_DIR = '/home/rhys/Dropbox/Snapshots_4_Docking'
+    DRBX_DIR = '/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_BECK/Snapshots_4_Docking'
 
     POCKETS = ['Experimental', 'Xray', 'Tunnel-Front', 'Tunnel-Back']
 
@@ -135,9 +135,9 @@ if __name__ == '__main__':
 
     # ligand file is the same for all systems
     # ligand_file = f"{DRBX_DIR}/lig_paper_Ship.pdbqt"
-    ligand_file = f"{DRBX_DIR}/lig_21.pdbqt"
+    ligand_file = f"{DRBX_DIR}/lig21_ship.pdbqt"
 
-    output_dir = f"{DRBX_DIR}/LIG_21_Results"
+    output_dir = f"{DRBX_DIR}/Lig21_Vina_Results"
 
     """
     c, s = _read_grid(f"{DRBX_DIR}/Tunnel-Front_Pocket/")
