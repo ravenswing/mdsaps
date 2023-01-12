@@ -129,7 +129,8 @@ if __name__ == '__main__':
 
     DRBX_DIR = '/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_BECK/Snapshots_4_Docking'
 
-    POCKETS = ['Experimental', 'Xray', 'Tunnel-Front', 'Tunnel-Back']
+    # POCKETS = ['Experimental', 'Xray', 'Tunnel-Front', 'Tunnel-Back']
+    POCKETS = ['Active-Site']
 
     SYSTEMS = ['ship1', 'ship2']
 
@@ -149,5 +150,7 @@ if __name__ == '__main__':
     for pocket in POCKETS:
         wd = f"{DRBX_DIR}/{pocket}_Pocket"
         process_pocket(wd, output_dir)
+
+    POCKETS = ['Experimental', 'Xray', 'Tunnel-Front', 'Tunnel-Back', 'Active-Site']
     new_data = process_results(output_dir)
     create_csv(new_data, output_dir)
