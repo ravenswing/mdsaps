@@ -135,10 +135,10 @@ if __name__ == '__main__':
     SYSTEMS = ['ship1', 'ship2']
 
     # ligand file is the same for all systems
-    # ligand_file = f"{DRBX_DIR}/lig_paper_Ship.pdbqt"
-    ligand_file = f"{DRBX_DIR}/lig21_ship.pdbqt"
+    ligand_file = f"{DRBX_DIR}/lig_paper_Ship.pdbqt"
+    # ligand_file = f"{DRBX_DIR}/lig21_ship.pdbqt"
 
-    output_dir = f"{DRBX_DIR}/Lig21_Vina_Results"
+    output_dir = f"{DRBX_DIR}/Paper_Ligand_Vina_Results"
 
     """
     c, s = _read_grid(f"{DRBX_DIR}/Tunnel-Front_Pocket/")
