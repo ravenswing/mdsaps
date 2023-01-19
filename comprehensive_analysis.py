@@ -10,7 +10,8 @@ from MDAnalysis.analysis import diffusionmap, align, rms
 DATA_DIR = '/media/rhys/Storage/jctc2_rhys_2022/gpfs_data'
 NWDA_DIR = '/media/rhys/Storage/jctc2_rhys_2022/New_data/funnel_fragment_paper'
 
-FIGS_DIR = './Figures'
+FIGS_DIR = '/media/rhys/Storage/jctc2_rhys_2022/Figures'
+
 
 EXP_VALS = {'3U5J': -7.65, '3U5L': -8.45, '4HBV': -6.33, '4LR6': -6.11,
             '4MEQ': -4.91, '4PCI': -6.99, '4UYD': -5.59, '2WI3': -4.71,
@@ -103,12 +104,14 @@ def calc_rmsd():
         for system in SYSTEMS.keys():
             for pdb in SYSTEMS[system]:
                 for i in range(3):
-                    solute_pdb = f'{DATA_DIR}/{method}/{system}/{i}_output/{pdb}/{filenames[method][0]}'
-                    solute_traj = f'{DATA_DIR}/{method}/{system}/{i}_output/{pdb}/{filenames[method][1]}'
+                    solute_pdb = (f'{DATA_DIR}/{method}/{system}/{i}_output/'
+                                  f'{pdb}/{filenames[method][0]}')
+                    solute_traj = (f'{DATA_DIR}/{method}/{system}/{i}_output/'
+                                   f'{pdb}/{filenames[method][1]}')
                     u = mda.Universe(solute_pdb, solute_traj)
                     r = rms.RMSD(u, select='backbone',
-                            groupselections=[f'resname MOL and not name H*'],
-                            ref_frame=0).run()
+                                 groupselections=['resname MOL and not name H*'],
+                                 ref_frame=0).run()
                     lig_rmsd = r.results.rmsd[:, -1]
                     cache_file = f'{RMSD_DIR}/{method}/{system}/{pdb}_{i}.p'
                     with open(cache_file, 'wb') as f:
@@ -126,9 +129,9 @@ def find_rx():
 
     for method in ['fun-metaD', 'fun-RMSD']:
         if 'RMSD' in method:
-            location = "/home/rhys/Storage/jctc2_rhys_2022/Fun-RMSD/analysis/RMSD_Data"
+            location = ('/home/rhys/Storage/jctc2_rhys_2022/'
+                        'Fun-RMSD/analysis/RMSD_Data')
             rep_range = [0, 1, 2]
-
         else:
             location = NWDA_DIR+'/RMSD_Data'
             rep_range = [3, 4, 5]
@@ -151,7 +154,7 @@ def find_rx():
                     # add values to data storage
                     data.loc[len(data.index)] = [method, system, pdb, i, N, rx]
     # save data
-    data.to_hdf('./NEW_rx_from_rmsd.h5', key='df', mode='w')
+    data.to_hdf('/media/rhys/Storage/jctc2_rhys_2022/NEW_rx_from_rmsd.h5', key='df', mode='w')
 
 
 def _work_out_biasfile(bias_dir, t):
@@ -199,7 +202,7 @@ def _write_fes_from_bias(bias_path, system, method, out_path):
 
 def extract_fes_per_rx():
     # Read in the rx information.
-    rmsd_data = pd.read_hdf('./NEW_rx_from_rmsd.h5', key='df')
+    rmsd_data = pd.read_hdf('/media/rhys/Storage/jctc2_rhys_2022/NEW_rx_from_rmsd.h5', key='df')
 
     for method in ['fun-metaD', 'fun-RMSD']:
         if 'RMSD' in method:
@@ -284,7 +287,7 @@ def make_tables():
             rep_range = [3, 4, 5]
             basins = proj_basins
 
-        to_csv = ['System,Ligand,Replica,Rx1,tRx1,Rx2,tRx2,Rx3,tRx3,Exp\n']
+        to_csv = ['System,Ligand,Replica,NRx,Rx1,tRx1,Rx2,tRx2,Rx3,tRx3,RxMax,tRxMax,Exp\n']
         for system in SYSTEMS.keys():
             for pdb in SYSTEMS[system]:
                 for i in rep_range:
@@ -292,18 +295,34 @@ def make_tables():
                     if method == 'fun-metaD' and system == 'BRD4' and i == 5:
                         continue
                     wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
-                    for fes_path in sorted(glob(f"{wd}/rxFES_*"))[:3]:
+                    nRx = len(glob(f'{wd}/rxFES_*'))
+                    new_line += f"{nRx},"
+                    nFES = min(len(glob(f"{wd}/rxFES_*")), 3)
+                    for n in range(nFES):
+                        fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
                         print(fes_path)
-                        dg = calculate_delta_g(f'{DATA_DIR}/{method}/{system}/{rep}_output/{lig}/fes_2d.dat',
-                                        basins[f"{system}_B"], basins[f"{system}_U"],
-                                        vol_corr[system])
-                        new_line += f"{dg:.4f},{}"
-                to_csv.append(new_line + '\n')
+                        dg = calculate_delta_g(fes_path,
+                                               basins[f"{system}_B"],
+                                               basins[f"{system}_U"],
+                                               vol_corr[system])
+                        new_line += f"{dg:.3f},{fes_path.split('/')[-1].split('_')[-1].split('.')[0]},"
+                    new_line += ('-,'*2*max(0,(3-nFES)))
+                    if nFES:
+                        final_rx = glob(f"{wd}/rxFES_{nRx-1}_*")[0]
+                        dg_final = calculate_delta_g(final_rx,
+                                                basins[f"{system}_B"],
+                                                basins[f"{system}_U"],
+                                                vol_corr[system])
+                        new_line += f"{dg_final:.3f},{final_rx.split('/')[-1].split('_')[-1].split('.')[0]},"
+                    else:
+                        new_line += '-,-,'
+                    new_line += f"{EXP_VALS[pdb]}"
+                    to_csv.append(new_line + '\n')
 
-        with open(f"./{method.lower()}_dg_values.csv", 'w') as f:
+        with open(f"/media/rhys/Storage/jctc2_rhys_2022/{method.lower()}_dg_values.csv", 'w') as f:
             f.writelines(to_csv)
 
-'''
+
 if __name__ == "__main__":
 
     # 1 - CALCULATE THE RX
