@@ -256,3 +256,60 @@ def measure_angle(trj_path, top_path, angle_atoms, ref_str,
         print("Calculating dihedral angle between 4 atom groups.")
         data = pt.dihedral(traj=traj, mask=angle_atoms)
     return data
+
+
+def read_pdb(path):
+    # Load complex pdb to edit
+    with open(path, 'r') as f:
+        lines = f.readlines()
+    print(f'Loaded {path}')
+    lines = [line.split() for line in lines]
+    return lines
+
+
+def _process_atm_nm(name):
+    # Full length names are left unchanged
+    if len(name) == 4:
+        return name
+    # Otherwise align to second character
+    else:
+        return f" {name:<3}"
+
+
+def format_pdb(info):
+    # Process atom name seperately
+    atm_nm = _process_atm_nm(info[2])
+
+    # Assign values for each column
+    record = info[0]  # Record name
+    atm_id = info[1]  # Atom serial number
+    alt_li = ' '  # Alternate location indicator
+    res_nm = info[3]  # Residue name.
+    chn_id = ' '  # Chain ID
+    res_id = info[4]  # Residue sequence number
+    i_code = ' '   # Code for insertion
+    coords = [float(info[5]),  # x (A)
+              float(info[6]),  # y (A)
+              float(info[7])]  # z (A)
+    occupn = float(info[8])  # Occupancy
+    temprt = float(info[9])  # Temperature
+    elemnt = info[10]  # Element
+    charge = '  '  # Charge
+
+    # Format the new line using all the values
+    new_line = (f"{record:6}"
+                f"{atm_id:>5} "
+                f"{atm_nm:4}"
+                f"{alt_li}"
+                f"{res_nm:3} "
+                f"{chn_id}"
+                f"{res_id:>4}"
+                f"{i_code}   "
+                f"{coords[0]:>8.3f}{coords[1]:>8.3f}{coords[2]:>8.3f}"
+                f"{occupn:>6.2f}"
+                f"{temprt:>6.2f}          "
+                f"{elemnt:>2}"
+                f"{charge}\n")
+
+    # Return the new line
+    return new_line
