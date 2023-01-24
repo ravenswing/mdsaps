@@ -4,15 +4,15 @@ import pickle
 from glob import glob
 
 import MDAnalysis as mda
-from MDAnalysis.analysis import diffusionmap, align, rms
+from MDAnalysis.analysis import rms
 
+# Directory locations
+STEM = '/media/rhys/Storage/jctc2_rhys_2022'
+DATA_DIR = f"{STEM}/gpfs_data"
+NWDA_DIR = f"{STEM}/New_data/funnel_fragment_paper"
+FIGS_DIR = f"{STEM}/Figures"
 
-DATA_DIR = '/media/rhys/Storage/jctc2_rhys_2022/gpfs_data'
-NWDA_DIR = '/media/rhys/Storage/jctc2_rhys_2022/New_data/funnel_fragment_paper'
-
-FIGS_DIR = '/media/rhys/Storage/jctc2_rhys_2022/Figures'
-
-
+# Experimental Values
 EXP_VALS = {'3U5J': -7.65, '3U5L': -8.45, '4HBV': -6.33, '4LR6': -6.11,
             '4MEQ': -4.91, '4PCI': -6.99, '4UYD': -5.59, '2WI3': -4.71,
             '2XHT': -8.13, '2YK9': -6.95, '3OW6': -9.08, '3K99': -9.85,
@@ -20,12 +20,13 @@ EXP_VALS = {'3U5J': -7.65, '3U5L': -8.45, '4HBV': -6.33, '4LR6': -6.11,
             '1PXJ': -7.08, '1WCC': -4.71, '2VTA': -5.09, '2VTH': -5.35,
             '2VTM': -4.09, '3TIY': -6.51}
 
+# PDB Ids for each of the 3 systems
 SYSTEMS = {'BRD4': ['3U5L', '3U5J', '4PCI', '4HBV', '4LR6', '4UYD', '4MEQ'],
            'HSP90': ['3K99', '3EKO', '3OW6', '2XHT', '2YK9', '2WI2', '2WI3'],
            'CDK2': ['1JVP', '1JVP_B', '1PXJ', '3TIY', '2VTH', '2VTA', '1WCC',
                     '2VTM']}
 
-# define the limits of each CV per system for processing bias files -> FES
+# Define the limits of each CV per system for processing bias files -> FES
 #             sys -method        proj      ext
 CV_LIMITS = {'BRD4-fun-metaD':  [0.8, 3.2, 0.0, 0.80],
              'HSP90-fun-metaD': [0.0, 3.7, 0.0, 1.35],
@@ -34,26 +35,19 @@ CV_LIMITS = {'BRD4-fun-metaD':  [0.8, 3.2, 0.0, 0.80],
              'HSP90-fun-RMSD':  [0.0, 3.7, 0.0, 1.50],
              'CDK2-fun-RMSD':   [0.3, 4.2, 0.0, 2.50]}
 
-# default file names for topology and trajectory
+# Total time (ns) for the simulations
+T_MAX = 2000
+
+# Default file names for topology and trajectory
 # -- SAME AS DOM --
 filenames = {'fun-metaD': ['solute.pdb', 'full_trj_solute.dcd'],
              'fun-RMSD': ['equilibrated.pdb', 'trj.dcd']}
 
-# same rmsd threshold for all systems for bound
+# Same rmsd threshold for all systems for bound
 # -- SAME AS DOM --
 bound_rmsd = 2.5
 
-# differing unbound states, due to length of funnel changing
-# -- DOM = no unbound used --
-unbound_rmsd = {'BRD4': 15,
-                'HSP90': 20,
-                'CDK2': 25}
-
-# same rmsd threshold for all systems for bound
-# -- SAME AS DOM --
-bound_rmsd = 2.5
-
-# differing unbound states, due to length of funnel changing
+# Differing unbound states, due to length of funnel changing
 # -- DOM = no unbound used --
 unbound_rmsd = {'BRD4': 15,
                 'HSP90': 20,
@@ -129,8 +123,7 @@ def find_rx():
 
     for method in ['fun-metaD', 'fun-RMSD']:
         if 'RMSD' in method:
-            location = ('/home/rhys/Storage/jctc2_rhys_2022/'
-                        'Fun-RMSD/analysis/RMSD_Data')
+            location = f"{STEM}/Fun-RMSD/analysis/RMSD_Data"
             rep_range = [0, 1, 2]
         else:
             location = NWDA_DIR+'/RMSD_Data'
@@ -145,58 +138,79 @@ def find_rx():
                         rmsd_data = pickle.load(f)
                     df['RMSD'] = rmsd_data
                     # add time and convert to ns
-                    #df['time'] = np.arange(0,len(df)) if 'RMSD' in method else np.arange(0,len(df))*0.1
+                    # df['time'] = np.arange(0,len(df)) if 'RMSD' in method else np.arange(0,len(df))*0.1
                     df['time'] = np.arange(0, len(df))
                     # run recrossing counting function
-                    N, rx = identify_recross(df, 'RMSD', bound=[bound_rmsd, 0.], unbound=unbound_rmsd[system])
+                    N, rx = identify_recross(df, 'RMSD',
+                                             bound=[bound_rmsd, 0.],
+                                             unbound=unbound_rmsd[system])
                     # filter out initial values due to the defined delay
                     rx = [1.]+[x for x in rx[1:] if x > delay]
                     # add values to data storage
                     data.loc[len(data.index)] = [method, system, pdb, i, N, rx]
     # save data
-    data.to_hdf('/media/rhys/Storage/jctc2_rhys_2022/NEW_rx_from_rmsd.h5', key='df', mode='w')
+    data.to_hdf(f"{STEM}/NEW_rx_from_rmsd.h5", key='df', mode='w')
 
 
 def _work_out_biasfile(bias_dir, t):
+    """ Calculate the bias file in a bias directory that comes after a certain
+        time, t.
+        (Entirely derived from Dom's method of finding the files, which uses
+        the total bias in a file to calculate when it was made along the
+        trajectory.)"""
+    # Create a dictionary of the total bias in each bias file.
     d = {}
     for bias_file in glob(f'{bias_dir}/*'):
         bias = np.load(bias_file)
         total_bias = np.sum(bias)
         d[bias_file] = total_bias
 
+    # Sort the files based on their total bias
     sort_d = sorted(d.items(), key=lambda x: x[1])
     sorted_bias_files = [i[0] for i in sort_d]
+    # Count the total number of bias files
     N = len(sorted_bias_files)
-    print(bias_dir, N)
 
-    t_per_file = np.linspace(0, 2000, N)
-    print(t_per_file)
-    # bisect.bisect_left(t_per_file, t)  # is faster for a large list than...
+    # Calculate the set of times corresponding (approx.) to when each bias
+    #  file was made
+    t_per_file = np.linspace(0, T_MAX, N)
+
+    # Find the index of the file that comes after time t
     index_to_use = next(i for i, x in enumerate(t_per_file) if x >= t)
-    print(index_to_use)
+    # N.B.
+    # bisect.bisect_left(t_per_file, t)  # is faster for a large list
+
+    # Returns the full path of the bias file.
     return sorted_bias_files[index_to_use]
 
 
 def _write_fes_from_bias(bias_path, system, method, out_path):
+    """ Write a FES.dat file from the .npy bias file.
+        Based entirely on Dom's methodology.
+        Requires CV bounds to be defined. """
 
     print(f"INFO: Writing FES for {bias_path}")
-    # method taken directly from DOM
+    # Define dT for bias calculation
     deltaT = 300*(10-1)
-
-    # load the bias file        
+    # Load the pickled bias file        
     bias = np.load(bias_path, allow_pickle=True)
-    # define the CV space
+    # Define the CV space
     xticks = np.linspace(CV_LIMITS[f"{system}-{method}"][0],
                          CV_LIMITS[f"{system}-{method}"][1], len(bias[0, :]))
     yticks = np.linspace(CV_LIMITS[f"{system}-{method}"][2],
                          CV_LIMITS[f"{system}-{method}"][3], len(bias[:, 0]))
-
+    # Write the FES file (same format as PLUMED)
     # fes[y,x]
     with open(out_path, 'w') as f:
+        # Header line
         f.write('#proj,cv2,bias(kj/mol)\n')
         for y in range(len(bias[:, 0])):
             for x in range(len(bias[0, :])):
-                f.write('%14.9f %14.9f %14.9f\n'% (xticks[x], yticks[y], -((300+deltaT)/deltaT)*bias[y,x]))
+                line = (f"{xticks[x]:14.9f} "
+                        f"{yticks[y]:14.9f} "
+                        f"{-((300+deltaT)/deltaT)*bias[y,x]:14.9f}\n")
+                # f.write('%14.9f %14.9f %14.9f\n'% (xticks[x], yticks[y], -((300+deltaT)/deltaT)*bias[y,x]))
+                f.write(line)
     print(f"INFO: Successfully written FES for {out_path}")
 
 
@@ -277,6 +291,33 @@ vol_corr = {'BRD4':  2.901782970733069,
             'CDK2':  2.955066838544255}
 
 
+def make_final_FES():
+    for method in ['fun-metaD', 'fun-RMSD']:
+        if 'RMSD' in method:
+            rep_range = [0, 1, 2]
+        else:
+            rep_range = [3, 4, 5]
+        for system in SYSTEMS.keys():
+            for pdb in SYSTEMS[system]:
+                for i in rep_range:
+                    if method == 'fun-metaD' and system == 'BRD4' and i == 5:
+                        continue
+                    wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
+                    d = {}
+                    for bias_file in glob(f'{wd}/bias_dir/*'):
+                        bias = np.load(bias_file)
+                        total_bias = np.sum(bias)
+                        d[bias_file] = total_bias
+
+                    sort_d = sorted(d.items(), key=lambda x: x[1])
+                    sorted_bias_files = [i[0] for i in sort_d]
+                    final_bias = sorted_bias_files[-1]
+                    _write_fes_from_bias(final_bias,
+                                         system,
+                                         method,
+                                         f"{wd}/FES_2micro.dat")
+
+
 def make_tables():
     # print dG values for all systems
     for method in ['fun-metaD', 'fun-RMSD']:
@@ -323,6 +364,60 @@ def make_tables():
             f.writelines(to_csv)
 
 
+def make_average_tables():
+    # print dG values for all systems
+    for method in ['fun-metaD', 'fun-RMSD']:
+        if 'RMSD' in method:
+            rep_range = [0, 1, 2]
+            basins = rmsd_basins
+        else:
+            rep_range = [3, 4, 5]
+            basins = proj_basins
+
+        to_csv = ['System,Ligand,Total Number of Rx,3rd Rx dG Value,3rd RX Time,Final Rx dG Value,Final Rx Time,Experimental dG Value\n']
+        for system in SYSTEMS.keys():
+            for pdb in SYSTEMS[system]:
+                new_line = f"{system},{pdb},"
+                # 
+                stats = [[], [], [], [], []]
+                for i in rep_range:
+                    if method == 'fun-metaD' and system == 'BRD4' and i == 5:
+                        continue
+                    wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
+                    print(wd)
+                    nRx = len(glob(f'{wd}/rxFES_*'))
+                    stats[0].append(nRx)
+                    nFES = min(nRx, 3)
+                    if nFES:
+                        print(nFES)
+                        fes_path = glob(f"{wd}/rxFES_{nFES-1}_*")[0]
+                        dg = calculate_delta_g(fes_path,
+                                               basins[f"{system}_B"],
+                                               basins[f"{system}_U"],
+                                               vol_corr[system])
+                        stats[1].append(dg)
+                        stats[2].append(float(fes_path.split('/')[-1].split('_')[-1].split('.')[0]))
+                        final_rx = glob(f"{wd}/rxFES_{nRx-1}_*")[0]
+                        dg_final = calculate_delta_g(final_rx,
+                                                     basins[f"{system}_B"],
+                                                     basins[f"{system}_U"],
+                                                     vol_corr[system])
+                        stats[3].append(dg_final)
+                        stats[4].append(float(final_rx.split('/')[-1].split('_')[-1].split('.')[0]))
+                    else:
+                        continue
+                if any(stats[0]):
+                    print(stats)
+                    new_line += ','.join([f"{np.asarray(s).mean():.2f} += {np.asarray(s).std():.2f}" for s in stats])
+                else:
+                    new_line += '-,'*4
+                new_line += f",{EXP_VALS[pdb]}"
+                to_csv.append(new_line + '\n')
+
+        with open(f"{STEM}/{method.lower()}_AVERAGE_values.csv", 'w') as f:
+            f.writelines(to_csv)
+
+
 if __name__ == "__main__":
 
     # 1 - CALCULATE THE RX
@@ -333,4 +428,7 @@ if __name__ == "__main__":
     # extract_fes_per_rx()
 
     # 5 - 
-    make_tables()
+    # make_tables()
+    make_average_tables()
+
+    # make_final_FES()
