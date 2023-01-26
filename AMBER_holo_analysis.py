@@ -1,5 +1,5 @@
 import pandas as pd
-import pyplot as plt
+import matplotlib.pyplot as plt
 import pytraj as pt
 import subprocess
 import sys
@@ -27,6 +27,7 @@ DATA_DIR = '/media/rhys/Storage/ship_lig21'
 SVR_DIR = 'iqtc:/home/g19torces/rhys_running/ship_lig21'
 
 # Run rsync
+'''
 try:
     subprocess.run(' '.join(['rsync -avzhPu',
                              f"{SVR_DIR}/*",
@@ -36,6 +37,8 @@ except subprocess.CalledProcessError as error:
     print('Error code:', error.returncode,
           '. Output:', error.output.decode("utf-8"))
 
+'''
+
 
 def func(x):
     return int(x.split('ns')[0].split('_')[-1])
@@ -43,9 +46,15 @@ def func(x):
 
 # load the rmsd file
 BB_RMSD_FILE = '/home/rhys/SHIP/Data/lig21_backbone.h5'
+LG_RMSD_FILE = '/home/rhys/SHIP/Data/lig21_ligand.h5'
+'''
+df = pd.DataFrame(columns=['pocket', 'system', 'data', 'mean', 'std'])
+df.to_hdf(BB_RMSD_FILE, key='df', mode='w')
+df.to_hdf(LG_RMSD_FILE, key='df', mode='w')
+'''
 df = pd.read_hdf(BB_RMSD_FILE, key='df', mode='r')
 align = '@CA,C,N,O'
-
+'''
 # Run analysis
 for pocket in POCKETS.keys():
     for system in POCKETS[pocket]:
@@ -53,25 +62,30 @@ for pocket in POCKETS.keys():
         wd = f"{DATA_DIR}/{pocket.lower()}/{system}"
         print(wd)
 
-        tt.make_fulltraj(wd, [wd+f"/{system}.top", wd+f"/{system}.eq_6.r"])
+        # tt.make_fulltraj(wd, [wd+f"/{system}.top", wd+f"/{system}.eq_6.r"])
+        print('made fulltraj')
 
         # Make a dry topology using PyTraj
-        a = pt.load_topology(f"{wd}/{system}.top")
-        a.strip(':WAT,Na+,Cl-')
-        a.save(f"{wd}/{system}_dry.top")
+        # a = pt.load_topology(f"{wd}/{system}.top")
+        # a.strip(':WAT,Na+,Cl-')
+        # a.save(f"{wd}/{system}_dry.top")
+        print('made dry top')
 
         # Identify the most recent traj. file
         traj_to_use = sorted(glob(f"{wd}/*.nc"), reverse=True, key=func)[0]
         print(f"Making analysis with {traj_to_use}")
 
         # Generate snapshots for PyMol session
+
         tt.snapshot_pdbs(wd,
                          traj_to_use,
                          f"{wd}/{system}_dry.top",
                          [f"{wd}/{system}.top", f"{wd}/{system}.eq_6.r"],
-                         [[0, (75*200)+1, 10*200]])
+                         [[0, (70*200)+1, 10*200]])
+
         # Original snapshots...
         # [[0, (50*200)+1, 10*200], [75*200, (100*200)+1, 25*200], [200*200, (1000*200)+1, 100*200]])
+        print('made snapshots')
 
         # Measure backbone RMSD
         trj_path = traj_to_use
@@ -100,15 +114,16 @@ df.to_hdf(BB_RMSD_FILE, key='df', mode='w')
 
 
 # Load the rmsd file
-LG_RMSD_FILE = '/home/rhys/SHIP/Data/lig21_ligand.h5'
 df = pd.read_hdf(LG_RMSD_FILE, key='df', mode='r')
 for pocket in POCKETS.keys():
     for system in POCKETS[pocket]:
 
+        wd = f"{DATA_DIR}/{pocket.lower()}/{system}"
+
         align = ':1-462@CA,C,N,O' if 'ship1' in system else ':1-457@CA,C,N,O'
         ligN = ':463' if 'ship1' in system else ':458'
 
-        traj_path = sorted(glob(f"{wd}/*.nc"), reverse=True, key=func)[0]
+        trj_path = sorted(glob(f"{wd}/*.nc"), reverse=True, key=func)[0]
         top_path = f"{DATA_DIR}/{pocket.lower()}/{system}/{system}_dry.top"
 
         ref = 0
@@ -132,17 +147,19 @@ for pocket in POCKETS.keys():
 
 # Save ligand RMSD to compressed file
 df.to_hdf(LG_RMSD_FILE, key='df', mode='w')
-
+'''
 for metric in ['Ligand', 'Backbone']:
 
     lr_df = pd.read_hdf(f"/home/rhys/SHIP/Data/lig21_{metric.lower()}.h5", key='df', mode='r')
+    print(lr_df)
     colours = ['#0D92FF', '#002982']
 
     fig, ax = plt.subplots(1, 3, figsize=(16, 6))
     i = 0
-    for pocket, g0 in lr_df.groupby('pocket'):
+    for pocket in POCKETS.keys():
 
-        data = g0.data.values()[0]
+        data = pd.Series(lr_df.loc[lr_df['pocket'] == pocket].data.values[0])
+        print(data)
 
         fig.tight_layout(h_pad=4)
 
@@ -150,18 +167,19 @@ for metric in ['Ligand', 'Backbone']:
         plt.subplots_adjust(top=0.9)
 
         ax[i].grid()
-        xfill = np.linspace(0, 700, len(data))
+        xfill = np.linspace(0, 70, len(data))
 
         ax[i].plot(xfill,
                    pd.Series(data.rolling(1000, center=True).mean()),
                    color=colours[0],
                    zorder=12)
         ax[i].scatter(xfill, data, color=colours[1], alpha=.1, s=.5)
-        ax[i].set_xlim([0, 700])
-        ax[i].set_ylim(ymin=0.5, ymax=4.5)
-        ax[i].set_title(f"{system.upper()}")
+        ax[i].set_xlim([0, 60])
+        ymax = 3.0 if 'Back' in metric else 20.0
+        ax[i].set_ylim(ymin=0.5, ymax=ymax)
+        ax[i].set_title(f"{pocket}")
         ax[i].set_xlabel('Simulation Time / ns')
-        ax[i].set_ylabel(r'Backbone RMSD / $\AA$')
+        ax[i].set_ylabel(f"{metric} RMSD / "+r'$\AA$')
         i += 1
 
-    fig.savefig(f"{DATA_DIR}/backbone_rmsd.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_BECK/NEW_LIG_21/SHIP2_{metric}_rmsd.png", dpi=300, bbox_inches='tight')
