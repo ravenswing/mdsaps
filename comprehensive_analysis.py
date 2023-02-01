@@ -4,6 +4,7 @@ import pandas as pd
 import pickle
 from glob import glob
 import sys
+import scipy.stats
 
 sys.path.append('/home/rhys/phd_tools/python_scripts')
 import graphics
@@ -439,7 +440,11 @@ def fes_per_rx():
                     if method == 'fun-metaD' and system == 'BRD4' and i == 5:
                         continue
                     wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
+             
                     nRx = len(glob(f'{wd}/rxFES_*'))
+
+                    if nRx == 0: continue
+                    
                     fig, ax = plt.subplots(1, nRx, figsize=(nRx*8, 6))
                     plt.suptitle(f'FES with Rx: {system} + {pdb} Rep. {i}')
                     plt.subplots_adjust(top=0.85, right=0.915)
@@ -447,9 +452,10 @@ def fes_per_rx():
                     max_vals = []
                     for n in range(nRx):
                         fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
-                        data, labels = load.fes(fes_path, False)
-                        data[2] = data[2]/4.184
-                        max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+                        print(fes_path)
+                        fes = np.loadtxt(fes_path)
+                        data = fes[:, 2]/4.168
+                        max_non_inf = np.amax(data[np.isfinite(data)])
                         max_vals.append(max_non_inf)
                         print('VMAX: ', max_non_inf)
                     print(f"using: {max(max_vals)}")
@@ -458,16 +464,34 @@ def fes_per_rx():
                     i = 0
                     for n in range(nRx):
                         fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
-                        data, labels = load.fes(fes_path, False)
+                        fes = np.loadtxt(fes_path)
+                        x = fes[:, 0]
+                        y=fes[:,1]
+                        z=fes[:,2]/4.184
                         data[2] = data[2]/4.184
-                        max_non_inf = np.amax(data[2][np.isfinite(data[2])])
-                        data[2] = data[2] + (max(max_vals) - max_non_inf)
-                        data[2] = data[2]*4.184
-                        cmap = graphics.two_cv_contour(data, labels, cmax, ax[i])
+                        max_non_inf = np.amax(z[np.isfinite(z)])
+                        z = z + (max(max_vals) - max_non_inf)
+                        z = z*4.184
                         t = float(fes_path.split('.')[0].split('_')[-1])
+                        conts = np.arange(0., cmax+1, 20)
+                        N=200
+                        xi = np.linspace(x.min(), x.max(), N)
+                        if method == 'fun-metaD':
+                            yi = np.linspace(y.min(),y.max(), N)
+                        else:
+                            if system == 'BRD4':
+                                yi = np.linspace(y.min(),1.25, N)
+                            elif system == 'HSP90':
+                                yi = np.linspace(y.min(),1.5, N)
+                            elif system == 'CDK2':
+                                yi = np.linspace(y.min(),2.5, N)
+                        zi = scipy.interpolate.griddata((x, y), z, (xi[None,:], yi[:,None]), method='cubic')
+
+                        cmap = ax[i].contourf(xi, yi, zi, conts, cmap='RdYlBu', antialiased=True)
+                        ax[i].contour(xi, yi, zi, conts, colors='k', linewidths=0.5, alpha=0.5, antialiased=True)
                         ax[i].set_title(f"t = {t:.0f} ns")
-                        ax[i].set_xlabel(f"{labels[0]} / nm")
-                        ax[i].set_ylabel(f"{labels[1]} / nm")
+                        ax[i].set_xlabel("CV1 / ")
+                        ax[i].set_ylabel("CV2 / ")
                         if basins is not None:
                             b1 = plt.Rectangle((basins['bound'][0], basins['bound'][2]),
                                             (basins['bound'][1] - basins['bound'][0]),
