@@ -1,7 +1,13 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 import pickle
 from glob import glob
+import sys
+
+sys.path.append('/home/rhys/phd_tools/python_scripts')
+import graphics
+import load_data as load
 
 import MDAnalysis as mda
 from MDAnalysis.analysis import rms
@@ -418,6 +424,80 @@ def make_average_tables():
             f.writelines(to_csv)
 
 
+def fes_per_rx():
+    # plot FES per rx for all systems
+    for method in ['fun-metaD', 'fun-RMSD']:
+        if 'RMSD' in method:
+            rep_range = [0, 1, 2]
+            basins = rmsd_basins
+        else:
+            rep_range = [3, 4, 5]
+            basins = proj_basins
+        for system in SYSTEMS.keys():
+            for pdb in SYSTEMS[system]:
+                for i in rep_range:
+                    if method == 'fun-metaD' and system == 'BRD4' and i == 5:
+                        continue
+                    wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
+                    nRx = len(glob(f'{wd}/rxFES_*'))
+                    fig, ax = plt.subplots(1, nRx, figsize=(nRx*8, 6))
+                    plt.suptitle(f'FES with Rx: {system} + {pdb} Rep. {i}')
+                    plt.subplots_adjust(top=0.85, right=0.915)
+                    # nFES = min(len(glob(f"{wd}/rxFES_*")), 3)
+                    max_vals = []
+                    for n in range(nRx):
+                        fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
+                        data, labels = load.fes(fes_path, False)
+                        data[2] = data[2]/4.184
+                        max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+                        max_vals.append(max_non_inf)
+                        print('VMAX: ', max_non_inf)
+                    print(f"using: {max(max_vals)}")
+                    cmax = max(max_vals)+1
+
+                    i = 0
+                    for n in range(nRx):
+                        fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
+                        data, labels = load.fes(fes_path, False)
+                        data[2] = data[2]/4.184
+                        max_non_inf = np.amax(data[2][np.isfinite(data[2])])
+                        data[2] = data[2] + (max(max_vals) - max_non_inf)
+                        data[2] = data[2]*4.184
+                        cmap = graphics.two_cv_contour(data, labels, cmax, ax[i])
+                        t = float(fes_path.split('.')[0].split('_')[-1])
+                        ax[i].set_title(f"t = {t:.0f} ns")
+                        ax[i].set_xlabel(f"{labels[0]} / nm")
+                        ax[i].set_ylabel(f"{labels[1]} / nm")
+                        if basins is not None:
+                            b1 = plt.Rectangle((basins['bound'][0], basins['bound'][2]),
+                                            (basins['bound'][1] - basins['bound'][0]),
+                                            basins['bound'][3],
+                                            ls='--', fc='none', ec='k', lw=2.0)
+                            ax[i].add_patch(b1)
+                            b2 = plt.Rectangle((basins['unbound'][0], basins['unbound'][2]),
+                                            (basins['unbound'][1] - basins['unbound'][0]),
+                                            basins['unbound'][3],
+                                            ls='--', fc='none', ec='k', lw=2.0)
+                            ax[i].add_patch(b2)
+                        i += 1
+
+                    '''
+            funnel_parms = {'lw': 0.0,
+                            'uw': 4.5,
+                            'sc': 2.5,
+                            'b': 1.0,
+                            'f': 0.15,
+                            'h': 1.5}
+                    '''
+
+                    cax = plt.axes([0.98, 0.11, 0.01, 0.77])
+                    cbar = plt.colorbar(cmap, cax=cax, aspect=10,
+                                        ticks=np.arange(0., cmax, 2.0))
+                    cbar.set_label('Free Energy / kcal/mol', fontsize=10)
+                    fig.savefig(f'/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/FES_per_RX_withBasins/{system}_{pdb}_{i}_FESperRX.png', dpi=300,
+                                bbox_inches='tight')
+
+
 if __name__ == "__main__":
 
     # 1 - CALCULATE THE RX
@@ -429,6 +509,8 @@ if __name__ == "__main__":
 
     # 5 - 
     # make_tables()
-    make_average_tables()
+    # make_average_tables()
 
     # make_final_FES()
+
+    fes_per_rx()
