@@ -487,20 +487,20 @@ def fes_per_rx():
                                 yi = np.linspace(y.min(),2.5, N)
                         zi = scipy.interpolate.griddata((x, y), z, (xi[None,:], yi[:,None]), method='cubic')
 
-                        cmap = ax[i].contourf(xi, yi, zi, conts, cmap='RdYlBu', antialiased=True)
+                        cmap = ax[i].contourf(xi, yi, zi, conts, levels=10, cmap='RdYlBu', antialiased=True)
                         ax[i].contour(xi, yi, zi, conts, colors='k', linewidths=0.5, alpha=0.5, antialiased=True)
                         ax[i].set_title(f"t = {t:.0f} ns")
                         ax[i].set_xlabel("CV1 / ")
                         ax[i].set_ylabel("CV2 / ")
                         if basins is not None:
-                            b1 = plt.Rectangle((basins['bound'][0], basins['bound'][2]),
-                                            (basins['bound'][1] - basins['bound'][0]),
-                                            basins['bound'][3],
+                            b1 = plt.Rectangle((basins[f"{system}_B"][0], basins[f"{system}_B"][2]),
+                                            (basins[f"{system}_B"][1] - basins[f"{system}_B"][0]),
+                                            basins[f"{system}_B"][3],
                                             ls='--', fc='none', ec='k', lw=2.0)
                             ax[i].add_patch(b1)
-                            b2 = plt.Rectangle((basins['unbound'][0], basins['unbound'][2]),
-                                            (basins['unbound'][1] - basins['unbound'][0]),
-                                            basins['unbound'][3],
+                            b2 = plt.Rectangle((basins[f"{system}_U"][0], basins[f"{system}_U"][2]),
+                                            (basins[f"{system}_U"][1] - basins[f"{system}_U"][0]),
+                                            basins[f"{system}_U"][3],
                                             ls='--', fc='none', ec='k', lw=2.0)
                             ax[i].add_patch(b2)
                         i += 1
