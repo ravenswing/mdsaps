@@ -427,7 +427,7 @@ def make_average_tables():
 
 def fes_per_rx():
     # plot FES per rx for all systems
-    for method in ['fun-RMSD']:
+    for method in ['fun-metaD', 'fun-RMSD']:
         if 'RMSD' in method:
             rep_range = [0, 1, 2]
             basins = rmsd_basins
@@ -440,60 +440,77 @@ def fes_per_rx():
                     if method == 'fun-metaD' and system == 'BRD4' and i == 5:
                         continue
                     wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
-             
+
                     nRx = len(glob(f'{wd}/rxFES_*'))
 
-                    if nRx < 2: continue
-                    
+                    if nRx < 2:
+                        continue
                     fig, ax = plt.subplots(1, nRx, figsize=(nRx*8, 6))
                     plt.suptitle(f'FES with Rx: {system} + {pdb} Rep. {i}')
                     plt.subplots_adjust(top=0.85, right=0.915)
                     # nFES = min(len(glob(f"{wd}/rxFES_*")), 3)
+
+                    # Establish the highest energy value for normalising cmap
                     max_vals = []
                     for n in range(nRx):
+                        # Load in each FES in order of RX.
                         fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
                         print(fes_path)
                         fes = np.loadtxt(fes_path)
-                        data = fes[:, 2]/4.168
-                        max_non_inf = np.amax(data[np.isfinite(data)])
+                        # Only considering the energy, converted to kcal/mol
+                        data = fes[:, 2]/4.184
+                        # Find the max, absolute, finite value
+                        max_non_inf = np.amax(np.abs(data[np.isfinite(data)]))
                         max_vals.append(max_non_inf)
                         print('VMAX: ', max_non_inf)
-                    print(f"using: {max(max_vals)}")
+                    # Identify the max max for the upper end of the cmap.
                     cmax = max(max_vals)+1
+                    print(f"using: {cmax}")
 
+                    # Plot each FES subplot
                     i = 0
                     for n in range(nRx):
+                        # Load in each FES in order of RX.
                         fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
                         fes = np.loadtxt(fes_path)
+                        # Convert distances to Angstroms
                         x = fes[:, 0]*10
-                        y= fes[:, 1]*10
-                        z= fes[:, 2]/4.184
-                        data[2] = data[2]/4.184
+                        y = fes[:, 1]*10
+                        # Convert energy to kcal/mol
+                        z = fes[:, 2]/4.184
+                        # Find the max finite value of the energy
                         max_non_inf = np.amax(z[np.isfinite(z)])
+                        # Normalise cmaps across all subplots
                         z = z + (max(max_vals) - max_non_inf)
-                        z = z*4.184
+                        # Only needed if using graphics.fes
+                        # z = z*4.184
+                        # Get the time of RX from the file name
                         t = float(fes_path.split('.')[0].split('_')[-1])
-                        conts = np.arange(0., cmax+1, 20)
-                        N=200
+                        # Define the set of contours
+                        conts = np.arange(0., cmax+1, 2.0)
+                        # Interpolate the grid points for a smoother plot
+                        N = 200
                         xi = np.linspace(x.min(), x.max(), N)
-                        yi = np.linspace(y.min(),y.max(), N)
-                        '''
-                        if method == 'fun-metaD':
-                        else:
-                            if system == 'BRD4':
-                                yi = np.linspace(y.min(),1.25, N)
-                            elif system == 'HSP90':
-                                yi = np.linspace(y.min(),1.5, N)
-                            elif system == 'CDK2':
-                                yi = np.linspace(y.min(),2.5, N)
-                        '''
-                        zi = scipy.interpolate.griddata((x, y), z, (xi[None,:], yi[:,None]), method='cubic')
-
-                        cmap = ax[i].contourf(xi, yi, zi, conts, levels=10, cmap='RdYlBu', antialiased=True)
-                        ax[i].contour(xi, yi, zi, conts, colors='k', linewidths=0.5, alpha=0.5, antialiased=True)
+                        yi = np.linspace(y.min(), y.max(), N)
+                        zi = scipy.interpolate.griddata((x, y),
+                                                        z,
+                                                        (xi[None, :],
+                                                         yi[:, None]),
+                                                        method='cubic')
+                        # Plot the colour map
+                        cmap = ax[i].contourf(xi, yi, zi,
+                                              conts, levels=15,
+                                              cmap='RdYlBu', antialiased=True)
+                        # Plot the contours over the colour map
+                        ax[i].contour(xi, yi, zi,
+                                      conts, colors='k', levels=15,
+                                      linewidths=0.5, alpha=0.5,
+                                      antialiased=True)
+                        # Plot formatting
                         ax[i].set_title(f"t = {t:.0f} ns")
                         ax[i].set_xlabel("CV1 / ")
                         ax[i].set_ylabel("CV2 / ")
+                        # Add the basins as dashed boxes
                         if basins is not None:
                             b1 = plt.Rectangle((basins[f"{system}_B"][0], basins[f"{system}_B"][2]),
                                             (basins[f"{system}_B"][1] - basins[f"{system}_B"][0]),
@@ -507,19 +524,12 @@ def fes_per_rx():
                             ax[i].add_patch(b2)
                         i += 1
 
-                    '''
-            funnel_parms = {'lw': 0.0,
-                            'uw': 4.5,
-                            'sc': 2.5,
-                            'b': 1.0,
-                            'f': 0.15,
-                            'h': 1.5}
-                    '''
-
+                    # Add the colour bar with label to the right of the plots
                     cax = plt.axes([0.98, 0.11, 0.01, 0.77])
-                    cbar = plt.colorbar(cmap, cax=cax, aspect=10,
-                                        ticks=np.arange(0., cmax, 2.0))
+                    cbar = plt.colorbar(cmap, cax=cax, aspect=10,)
+                                        #ticks=np.arange(0., cmax, 20))
                     cbar.set_label('Free Energy / kcal/mol', fontsize=10)
+                    # Save the png
                     fig.savefig(f'/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/FES_per_RX_withBasins/{method}/{system}_{pdb}_{i}_FESperRX.png', dpi=300,
                                 bbox_inches='tight')
 
