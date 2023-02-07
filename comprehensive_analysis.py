@@ -427,7 +427,7 @@ def make_average_tables():
 
 def fes_per_rx():
     # plot FES per rx for all systems
-    for method in ['fun-metaD', 'fun-RMSD']:
+    for method in ['fun-RMSD']:
         if 'RMSD' in method:
             rep_range = [0, 1, 2]
             basins = rmsd_basins
@@ -443,7 +443,7 @@ def fes_per_rx():
              
                     nRx = len(glob(f'{wd}/rxFES_*'))
 
-                    if nRx == 0: continue
+                    if nRx < 2: continue
                     
                     fig, ax = plt.subplots(1, nRx, figsize=(nRx*8, 6))
                     plt.suptitle(f'FES with Rx: {system} + {pdb} Rep. {i}')
@@ -465,9 +465,9 @@ def fes_per_rx():
                     for n in range(nRx):
                         fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
                         fes = np.loadtxt(fes_path)
-                        x = fes[:, 0]
-                        y=fes[:,1]
-                        z=fes[:,2]/4.184
+                        x = fes[:, 0]*10
+                        y= fes[:, 1]*10
+                        z= fes[:, 2]/4.184
                         data[2] = data[2]/4.184
                         max_non_inf = np.amax(z[np.isfinite(z)])
                         z = z + (max(max_vals) - max_non_inf)
@@ -476,8 +476,9 @@ def fes_per_rx():
                         conts = np.arange(0., cmax+1, 20)
                         N=200
                         xi = np.linspace(x.min(), x.max(), N)
+                        yi = np.linspace(y.min(),y.max(), N)
+                        '''
                         if method == 'fun-metaD':
-                            yi = np.linspace(y.min(),y.max(), N)
                         else:
                             if system == 'BRD4':
                                 yi = np.linspace(y.min(),1.25, N)
@@ -485,6 +486,7 @@ def fes_per_rx():
                                 yi = np.linspace(y.min(),1.5, N)
                             elif system == 'CDK2':
                                 yi = np.linspace(y.min(),2.5, N)
+                        '''
                         zi = scipy.interpolate.griddata((x, y), z, (xi[None,:], yi[:,None]), method='cubic')
 
                         cmap = ax[i].contourf(xi, yi, zi, conts, levels=10, cmap='RdYlBu', antialiased=True)
@@ -518,7 +520,7 @@ def fes_per_rx():
                     cbar = plt.colorbar(cmap, cax=cax, aspect=10,
                                         ticks=np.arange(0., cmax, 2.0))
                     cbar.set_label('Free Energy / kcal/mol', fontsize=10)
-                    fig.savefig(f'/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/FES_per_RX_withBasins/{system}_{pdb}_{i}_FESperRX.png', dpi=300,
+                    fig.savefig(f'/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/FES_per_RX_withBasins/{method}/{system}_{pdb}_{i}_FESperRX.png', dpi=300,
                                 bbox_inches='tight')
 
 
