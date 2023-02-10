@@ -21,7 +21,7 @@ POCKETS = {'Active-Site': ['ship2_Active-Site+Lig21'],
            'Tunnel-Back':  ['ship2_Tunnel-Back+Lig21']}
 
 # DATA_DIR = '/media/rhys/Storage/ship_holo_uMD/data/'
-DATA_DIR = '/media/rhys/Storage/ship_lig21'
+DATA_DIR = '/media/rhys/Storage/SHIP/Lig21_holo_uMD/data'
 
 # Remote directory: IQTC
 SVR_DIR = 'iqtc:/home/g19torces/rhys_running/ship_lig21'
@@ -51,7 +51,6 @@ LG_RMSD_FILE = '/home/rhys/SHIP/Data/lig21_ligand.h5'
 df = pd.DataFrame(columns=['pocket', 'system', 'data', 'mean', 'std'])
 df.to_hdf(BB_RMSD_FILE, key='df', mode='w')
 df.to_hdf(LG_RMSD_FILE, key='df', mode='w')
-'''
 df = pd.read_hdf(BB_RMSD_FILE, key='df', mode='r')
 align = '@CA,C,N,O'
 '''
@@ -62,14 +61,14 @@ for pocket in POCKETS.keys():
         wd = f"{DATA_DIR}/{pocket.lower()}/{system}"
         print(wd)
 
-        # tt.make_fulltraj(wd, [wd+f"/{system}.top", wd+f"/{system}.eq_6.r"])
+        tt.make_fulltraj(wd, [wd+f"/{system}.top", wd+f"/{system}.eq_6.r"])
         print('made fulltraj')
 
         # Make a dry topology using PyTraj
         # a = pt.load_topology(f"{wd}/{system}.top")
         # a.strip(':WAT,Na+,Cl-')
         # a.save(f"{wd}/{system}_dry.top")
-        print('made dry top')
+        # print('made dry top')
 
         # Identify the most recent traj. file
         traj_to_use = sorted(glob(f"{wd}/*.nc"), reverse=True, key=func)[0]
@@ -81,11 +80,12 @@ for pocket in POCKETS.keys():
                          traj_to_use,
                          f"{wd}/{system}_dry.top",
                          [f"{wd}/{system}.top", f"{wd}/{system}.eq_6.r"],
-                         [[0, (70*200)+1, 10*200]])
+                         [[0, (50*200)+1, 10*200], [75*200, (100*200)+1, 25*200], [200*200, (1000*200)+1, 100*200]])
 
         # Original snapshots...
         # [[0, (50*200)+1, 10*200], [75*200, (100*200)+1, 25*200], [200*200, (1000*200)+1, 100*200]])
         print('made snapshots')
+        '''
 
         # Measure backbone RMSD
         trj_path = traj_to_use
@@ -147,7 +147,7 @@ for pocket in POCKETS.keys():
 
 # Save ligand RMSD to compressed file
 df.to_hdf(LG_RMSD_FILE, key='df', mode='w')
-'''
+
 for metric in ['Ligand', 'Backbone']:
 
     lr_df = pd.read_hdf(f"/home/rhys/SHIP/Data/lig21_{metric.lower()}.h5", key='df', mode='r')
@@ -183,3 +183,4 @@ for metric in ['Ligand', 'Backbone']:
         i += 1
 
     fig.savefig(f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_BECK/NEW_LIG_21/SHIP2_{metric}_rmsd.png", dpi=300, bbox_inches='tight')
+'''

@@ -533,6 +533,7 @@ def fes_per_rx():
                     fig.savefig(f'/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/FES_per_RX_withBasins/{method}/{system}_{pdb}_{i}_FESperRX.png', dpi=300,
                                 bbox_inches='tight')
 
+def gismo_colvar(wd, in_colvar='COLVAR', out_colvar='COLVAR_GISMO')
 
 if __name__ == "__main__":
 
