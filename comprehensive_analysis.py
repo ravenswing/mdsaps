@@ -435,22 +435,54 @@ def make_paper_tables():
             rep_range = [3, 4, 5]
             basins = proj_basins
 
-        to_csv = ['System,Ligand,Total Number of Rx,3rd Rx dG Value,3rd RX Time,Final Rx dG Value,Final Rx Time,Experimental dG Value\n']
+        to_csv = ['System,Ligand,Replica,dG Rx1, t Rx1, dG Rx2, t Rx2, dG Rx3, t Rx3, N Rx, dG Final Rx, t Final Rx, dG Experimental\n']
         for system in SYSTEMS.keys():
             for pdb in SYSTEMS[system]:
-                new_line = f"{system},{pdb},"
                 # 
                 stats = [[], [], [], [], []]
                 for i in rep_range:
+                    # Start a new line
+                    new_line = f"{system},{pdb},{i},"
+                    # Skip missing systems
                     if method == 'fun-metaD' and system == 'BRD4' and i == 5:
                         continue
                     wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
                     print(wd)
+                    # Calculate total number of Rx
                     nRx = len(glob(f'{wd}/rxFES_*'))
                     stats[0].append(nRx)
+                    # Only look at first 3 Rx for table
                     nFES = min(nRx, 3)
+                    # Add data to line for first 3 Rx - dG and t
+                    for n in range(nFES):
+                        fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
+                        dg = calculate_delta_g(fes_path,
+                                               basins[f"{system}_B"],
+                                               basins[f"{system}_U"],
+                                               vol_corr[system])
+                        new_line += f"{dg:.3f},{fes_path.split('/')[-1].split('_')[-1].split('.')[0]},"
+                    # Fill line with dashes if < 3 Rx
+                    new_line += ('-,'*2*max(0, (3-nFES)))
+                    # Add total Rx number to line
+                    new_line += f"{nRx},"
+                    # Add the last Rx data to line - dG and t
                     if nFES:
-                        print(nFES)
+                        final_rx = glob(f"{wd}/rxFES_{nRx-1}_*")[0]
+                        dg_final = calculate_delta_g(final_rx,
+                                                basins[f"{system}_B"],
+                                                basins[f"{system}_U"],
+                                                vol_corr[system])
+                        new_line += f"{dg_final:.3f},{final_rx.split('/')[-1].split('_')[-1].split('.')[0]},"
+                    else:
+                        new_line += '-,-,'
+                    # Add Experimental value to end of line
+                    new_line += f",{EXP_VALS[pdb]}"
+
+
+                new_line = f"{system},{pdb},Mean,"
+
+                    # Calculate average values
+                    if nFES:
                         fes_path = glob(f"{wd}/rxFES_{nFES-1}_*")[0]
                         dg = calculate_delta_g(fes_path,
                                                basins[f"{system}_B"],
@@ -597,8 +629,9 @@ if __name__ == "__main__":
     # extract_fes_per_rx()
 
     # 5 - 
-    make_tables()
-    make_average_tables()
+    #make_tables()
+    #make_average_tables()
+    make_paper_tables()
 
     # make_final_FES()
 
