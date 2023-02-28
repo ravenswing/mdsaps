@@ -270,27 +270,27 @@ def calculate_delta_g(fes_path, A, B, vol_corr):
 
 
 #                            proj       ext
-proj_basins = {'BRD4_B':  [8.0, 13.0, 0.0, 6.0],  # A 1 = Narrow definition
-               'BRD4_U':  [25., 30.0, 0.0, 3.0],  # B
-               'HSP90_B': [8.0, 12.0, 0.0, 3.0],  # A
-               'HSP90_U': [30., 35.0, 0.0, 3.0],  # B
-               'CDK2_B':  [5.0, 11.0, 0.0, 2.0],  # A
-               'CDK2_U':  [30., 40.0, 0.0, 3.0]}  # B
+proj_basins = {'BRD4_B':  [0.0, 17.0, 0.0, 5.0],  # A 1 = Narrow definition
+               'BRD4_U':  [25., 30.0, 0.0, 2.5],  # B
+               'CDK2_B':  [7.0, 15.0, 0.0, 2.5],  # A
+               'CDK2_U':  [30., 40.0, 0.0, 3.0],  # B
+               'HSP90_B': [6.0, 14.0, 0.0, 3.0],  # A
+               'HSP90_U': [30., 35.0, 0.0, 3.0]}  # B
 
 proj_basins_wide = {'BRD4_B':  [8.0, 18.0, 0.0, 6.0],  # A 2 = Wide definitio
                     'BRD4_U':  [25., 30.0, 0.0, 3.0],  # B
-                    'HSP90_B': [8.0, 16.0, 0.0, 8.0],  # A
-                    'HSP90_U': [30., 35.0, 0.0, 3.0],  # B
                     'CDK2_B':  [5.0, 16.0, 0.0, 8.0],  # A
-                    'CDK2_U':  [30., 40.0, 0.0, 3.0]}  # B
+                    'CDK2_U':  [30., 40.0, 0.0, 3.0],  # B
+                    'HSP90_B': [8.0, 16.0, 0.0, 8.0],  # A
+                    'HSP90_U': [30., 35.0, 0.0, 3.0]}  # B
 
 #                          proj       rmsd
-rmsd_basins = {'BRD4_B':  [0.0, 15.0, 0.0, 5.0],  # A
+rmsd_basins = {'BRD4_B':  [0.0, 17.0, 0.0, 5.0],  # A
                'BRD4_U':  [25., 30.0, 0.0, 12.],  # B
-               'HSP90_B': [5.0, 11.0, 0.0, 5.0],  # A
-               'HSP90_U': [30., 35.0, 0.0, 14.],  # B
-               'CDK2_B':  [8.0, 15.0, 0.0, 5.0],  # A
-               'CDK2_U':  [30., 40.0, 0.0, 20.]}  # B
+               'CDK2_B':  [7.0, 15.0, 0.0, 5.0],  # A
+               'CDK2_U':  [30., 40.0, 0.0, 20.],  # B
+               'HSP90_B': [6.0, 14.0, 0.0, 5.0],  # A
+               'HSP90_U': [30., 35.0, 0.0, 14.]}  # B
 
 # volume corrections as calculated from Laco's notebook
 vol_corr = {'BRD4':  2.901782970733069,
@@ -367,7 +367,7 @@ def make_tables():
                     new_line += f"{EXP_VALS[pdb]}"
                     to_csv.append(new_line + '\n')
 
-        with open(f"/media/rhys/Storage/jctc2_rhys_2022/{method.lower()}_dg_values.csv", 'w') as f:
+        with open(f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/{method.lower()}_dg_values_NEWBASINS.csv", 'w') as f:
             f.writelines(to_csv)
 
 
@@ -421,9 +421,62 @@ def make_average_tables():
                 new_line += f",{EXP_VALS[pdb]}"
                 to_csv.append(new_line + '\n')
 
-        with open(f"{STEM}/{method.lower()}_AVERAGE_values.csv", 'w') as f:
+        with open(f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/{method.lower()}_AVERAGE_values_NEWBASINS.csv", 'w') as f:
             f.writelines(to_csv)
 
+
+def make_paper_tables():
+    # print dG values for all systems
+    for method in ['fun-metaD', 'fun-RMSD']:
+        if 'RMSD' in method:
+            rep_range = [0, 1, 2]
+            basins = rmsd_basins
+        else:
+            rep_range = [3, 4, 5]
+            basins = proj_basins
+
+        to_csv = ['System,Ligand,Total Number of Rx,3rd Rx dG Value,3rd RX Time,Final Rx dG Value,Final Rx Time,Experimental dG Value\n']
+        for system in SYSTEMS.keys():
+            for pdb in SYSTEMS[system]:
+                new_line = f"{system},{pdb},"
+                # 
+                stats = [[], [], [], [], []]
+                for i in rep_range:
+                    if method == 'fun-metaD' and system == 'BRD4' and i == 5:
+                        continue
+                    wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
+                    print(wd)
+                    nRx = len(glob(f'{wd}/rxFES_*'))
+                    stats[0].append(nRx)
+                    nFES = min(nRx, 3)
+                    if nFES:
+                        print(nFES)
+                        fes_path = glob(f"{wd}/rxFES_{nFES-1}_*")[0]
+                        dg = calculate_delta_g(fes_path,
+                                               basins[f"{system}_B"],
+                                               basins[f"{system}_U"],
+                                               vol_corr[system])
+                        stats[1].append(dg)
+                        stats[2].append(float(fes_path.split('/')[-1].split('_')[-1].split('.')[0]))
+                        final_rx = glob(f"{wd}/rxFES_{nRx-1}_*")[0]
+                        dg_final = calculate_delta_g(final_rx,
+                                                     basins[f"{system}_B"],
+                                                     basins[f"{system}_U"],
+                                                     vol_corr[system])
+                        stats[3].append(dg_final)
+                        stats[4].append(float(final_rx.split('/')[-1].split('_')[-1].split('.')[0]))
+                    else:
+                        continue
+                if any(stats[0]):
+                    print(stats)
+                    new_line += ','.join([f"{np.asarray(s).mean():.2f} += {np.asarray(s).std():.2f}" for s in stats])
+                else:
+                    new_line += '-,'*4
+                new_line += f",{EXP_VALS[pdb]}"
+                to_csv.append(new_line + '\n')
+
+        with open(f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/{method.lower()}_AVERAGE_values.csv", 'w') as f:
+            f.writelines(to_csv)
 
 def fes_per_rx():
     # plot FES per rx for all systems
@@ -533,7 +586,6 @@ def fes_per_rx():
                     fig.savefig(f'/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/FES_per_RX_withBasins/{method}/{system}_{pdb}_{i}_FESperRX.png', dpi=300,
                                 bbox_inches='tight')
 
-def gismo_colvar(wd, in_colvar='COLVAR', out_colvar='COLVAR_GISMO')
 
 if __name__ == "__main__":
 
@@ -545,9 +597,9 @@ if __name__ == "__main__":
     # extract_fes_per_rx()
 
     # 5 - 
-    # make_tables()
-    # make_average_tables()
+    make_tables()
+    make_average_tables()
 
     # make_final_FES()
 
-    fes_per_rx()
+    # fes_per_rx()
