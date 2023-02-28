@@ -435,11 +435,11 @@ def make_paper_tables():
             rep_range = [3, 4, 5]
             basins = proj_basins
 
-        to_csv = ['System,Ligand,Replica,dG Rx1, t Rx1, dG Rx2, t Rx2, dG Rx3, t Rx3, N Rx, dG Final Rx, t Final Rx, dG Experimental\n']
+        to_csv = ['System,Ligand,Replica,No. Rx,dG Rx1,t Rx1,dG Rx2,t Rx2,dG Rx3,t Rx3,dG Final Rx,t Final Rx,dG Experimental\n']
         for system in SYSTEMS.keys():
             for pdb in SYSTEMS[system]:
                 # 
-                stats = [[], [], [], [], []]
+                stats = [[], [], [], []]
                 for i in rep_range:
                     # Start a new line
                     new_line = f"{system},{pdb},{i},"
@@ -450,7 +450,8 @@ def make_paper_tables():
                     print(wd)
                     # Calculate total number of Rx
                     nRx = len(glob(f'{wd}/rxFES_*'))
-                    stats[0].append(nRx)
+                    # Add total Rx number to line
+                    new_line += f"{nRx},"
                     # Only look at first 3 Rx for table
                     nFES = min(nRx, 3)
                     # Add data to line for first 3 Rx - dG and t
@@ -461,10 +462,9 @@ def make_paper_tables():
                                                basins[f"{system}_U"],
                                                vol_corr[system])
                         new_line += f"{dg:.3f},{fes_path.split('/')[-1].split('_')[-1].split('.')[0]},"
+                        stats[n].append(dg)
                     # Fill line with dashes if < 3 Rx
                     new_line += ('-,'*2*max(0, (3-nFES)))
-                    # Add total Rx number to line
-                    new_line += f"{nRx},"
                     # Add the last Rx data to line - dG and t
                     if nFES:
                         final_rx = glob(f"{wd}/rxFES_{nRx-1}_*")[0]
@@ -473,41 +473,25 @@ def make_paper_tables():
                                                 basins[f"{system}_U"],
                                                 vol_corr[system])
                         new_line += f"{dg_final:.3f},{final_rx.split('/')[-1].split('_')[-1].split('.')[0]},"
+                        stats[3].append(dg_final)
                     else:
                         new_line += '-,-,'
                     # Add Experimental value to end of line
-                    new_line += f",{EXP_VALS[pdb]}"
+                    new_line += f"{EXP_VALS[pdb]}"
+                    to_csv.append(new_line + '\n')
 
 
-                new_line = f"{system},{pdb},Mean,"
-
-                    # Calculate average values
-                    if nFES:
-                        fes_path = glob(f"{wd}/rxFES_{nFES-1}_*")[0]
-                        dg = calculate_delta_g(fes_path,
-                                               basins[f"{system}_B"],
-                                               basins[f"{system}_U"],
-                                               vol_corr[system])
-                        stats[1].append(dg)
-                        stats[2].append(float(fes_path.split('/')[-1].split('_')[-1].split('.')[0]))
-                        final_rx = glob(f"{wd}/rxFES_{nRx-1}_*")[0]
-                        dg_final = calculate_delta_g(final_rx,
-                                                     basins[f"{system}_B"],
-                                                     basins[f"{system}_U"],
-                                                     vol_corr[system])
-                        stats[3].append(dg_final)
-                        stats[4].append(float(final_rx.split('/')[-1].split('_')[-1].split('.')[0]))
+                next_line = f"{system},{pdb},Mean,,"
+                for s in stats:
+                    if len(s) > 1:
+                        next_line += f"{np.asarray(s).mean():.2f} += {np.asarray(s).std():.1f},,"
                     else:
-                        continue
-                if any(stats[0]):
-                    print(stats)
-                    new_line += ','.join([f"{np.asarray(s).mean():.2f} += {np.asarray(s).std():.2f}" for s in stats])
-                else:
-                    new_line += '-,'*4
-                new_line += f",{EXP_VALS[pdb]}"
-                to_csv.append(new_line + '\n')
+                        next_line += '-,,'
+                # Add Experimental value to end of line
+                next_line += f"{EXP_VALS[pdb]}"
+                to_csv.append(next_line + '\n')
 
-        with open(f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/{method.lower()}_AVERAGE_values.csv", 'w') as f:
+        with open(f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/{method.lower()}_PAPER_table.csv", 'w') as f:
             f.writelines(to_csv)
 
 def fes_per_rx():
