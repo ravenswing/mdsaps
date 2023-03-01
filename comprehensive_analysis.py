@@ -18,6 +18,7 @@ STEM = '/media/rhys/Storage/jctc2_rhys_2022'
 DATA_DIR = f"{STEM}/gpfs_data"
 NWDA_DIR = f"{STEM}/New_data/funnel_fragment_paper"
 FIGS_DIR = f"{STEM}/Figures"
+DRBX_DIR = f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2"
 
 # Experimental Values
 EXP_VALS = {'3U5J': -7.65, '3U5L': -8.45, '4HBV': -6.33, '4LR6': -6.11,
@@ -494,6 +495,72 @@ def make_paper_tables():
         with open(f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2/Results_&_Figures/{method.lower()}_PAPER_table.csv", 'w') as f:
             f.writelines(to_csv)
 
+
+def make_pd_hdf():
+    # print dG values for all systems
+    for method in ['fun-metaD', 'fun-RMSD']:
+        if 'RMSD' in method:
+            rep_range = [0, 1, 2]
+            basins = rmsd_basins
+        else:
+            rep_range = [3, 4, 5]
+            basins = proj_basins
+
+        k = 0
+        for system in SYSTEMS.keys():
+            for pdb in SYSTEMS[system]:
+                for i in rep_range:
+                    # Skip missing systems
+                    if method == 'fun-metaD' and system == 'BRD4' and i == 5:
+                        continue
+                    wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
+                    # print(wd)
+
+                    # Calculate total number of Rx
+                    nRx = len(glob(f'{wd}/rxFES_*'))
+                    print(nRx)
+                    N = []
+                    dG = []
+                    t = []
+                    # Add data
+                    for n in range(nRx):
+                        fes_path = glob(f"{wd}/rxFES_{n}_*")[0]
+                        dg = calculate_delta_g(fes_path,
+                                               basins[f"{system}_B"],
+                                               basins[f"{system}_U"],
+                                               vol_corr[system])
+
+                        N.append(n)
+                        dG.append(dg)
+                        t.append(float(fes_path.split('/')[-1].split('_')[-1].split('.')[0]))
+
+                    #print(np.asarray([N, dG, t]).T)
+                    # backbone:
+                    inp = pd.DataFrame(columns=['nrx', f"R{i}dGrx", f"R{i}trx"],
+                                       data=np.asarray([N, dG, t]).T).set_index('nrx')
+                    inp_l = pd.concat({pdb: inp}, axis=1)
+                    inp_s = pd.concat({system: inp_l}, axis=1)
+
+                    if k == 0:
+                        print('First time --> Creating Files')
+                        inp_s.to_hdf(f"{DRBX_DIR}/{method}_dGRX.h5", key='df')
+                        k += 1
+                        continue
+                    #print('Further time --> Reading Files & Adding Data')
+                    new = pd.read_hdf(f"{DRBX_DIR}/{method}_dGRX.h5", key='df')
+
+                    if any([(mi == inp_s.columns)[0] for mi in new.columns]):
+                        print("Updating values in DataFrame.")
+                        new.update(inp_s)
+                    else:
+                        print("Adding new values to DataFrame.")
+                        new = new.join(inp_s, how='outer')
+                    # reorder columns
+                    new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
+                    new.to_hdf(f"{DRBX_DIR}/{method}_dGRX.h5", key='df')
+                    k += 1
+
+
 def fes_per_rx():
     # plot FES per rx for all systems
     for method in ['fun-metaD', 'fun-RMSD']:
@@ -615,7 +682,8 @@ if __name__ == "__main__":
     # 5 - 
     #make_tables()
     #make_average_tables()
-    make_paper_tables()
+    #make_paper_tables()
+    make_pd_hdf()
 
     # make_final_FES()
 
