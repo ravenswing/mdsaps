@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pickle
 from glob import glob
-import sys
 import scipy.stats
+import subprocess
+import sys
 
 sys.path.append('/home/rhys/phd_tools/python_scripts')
 import graphics
@@ -222,11 +223,11 @@ def _write_fes_from_bias(bias_path, system, method, out_path):
     print(f"INFO: Successfully written FES for {out_path}")
 
 
-def extract_fes_per_rx():
+def extract_fes(mode='per_rx', stride=None):
     # Read in the rx information.
-    rmsd_data = pd.read_hdf('/media/rhys/Storage/jctc2_rhys_2022/NEW_rx_from_rmsd.h5', key='df')
+    rmsd_data = pd.read_hdf('/home/rhys/Dropbox/RESEARCH/Project_JCTC2/NEW_rx_from_rmsd.h5', key='df')
 
-    for method in ['fun-metaD', 'fun-RMSD']:
+    for method in ['fun-RMSD']:
         if 'RMSD' in method:
             rep_range = [0, 1, 2]
         else:
@@ -238,25 +239,46 @@ def extract_fes_per_rx():
                         continue
                     wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}"
 
-                    # Get list of rx from rmsd data.
-                    recrossings = rmsd_data.loc[(rmsd_data.method==method) &
-                                                (rmsd_data.system==system) &
-                                                (rmsd_data.pdb==pdb) &
-                                                (rmsd_data.rep==i)].rx.values[0][1:]
+                    if mode == 'per_rx':
+                        # Get list of rx from rmsd data.
+                        recrossings = rmsd_data.loc[(rmsd_data.method==method) &
+                                                    (rmsd_data.system==system) &
+                                                    (rmsd_data.pdb==pdb) &
+                                                    (rmsd_data.rep==i)].rx.values[0][1:]
 
-                    # 
-                    for i, rx in enumerate(recrossings):
-                        bias_path = _work_out_biasfile(f"{wd}/bias_dir", rx)
+                        print(f"Extracting FESs for {len(recrossings)} Rxs")
+                        for i, rx in enumerate(recrossings):
+                            bias_path = _work_out_biasfile(f"{wd}/bias_dir", rx)
+                            _write_fes_from_bias(bias_path,
+                                                system,
+                                                method,
+                                                f"{wd}/rxFES_{i}_{rx}.dat")
+                    elif stride:
+                        print(f"Extracting FESs with STRIDE = {stride}")
+                        dname = f"{wd}/tmp_fes/"
+                        # Make the working directory
+                        try:
+                            subprocess.run(['mkdir', "-p", dname], check=True)
+                        except subprocess.CalledProcessError as error:
+                            print('Error code:', error.returncode,
+                                '. Output:', error.output.decode("utf-8"))
+                        t_stamps = np.linspace(0, 2000, stride)
+                        for i, rx in enumerate(t_stamps):
+                            bias_path = _work_out_biasfile(f"{wd}/bias_dir", rx)
+                            _write_fes_from_bias(bias_path,
+                                                 system,
+                                                 method,
+                                                 f"{wd}/tmp_fes/rxFES_{i}_{int(rx)}.dat")
 
-                        print(bias_path)
+                    else:
+                        print('Incorrect MODE or missing STRIDE')
+                        break
 
-                        _write_fes_from_bias(bias_path,
-                                             system,
-                                             method,
-                                             f"{wd}/rxFES_{i}_{rx}.dat")
-
-def calculate_delta_g(fes_path, A, B, vol_corr):
-    fes_data = pd.read_table(fes_path, sep="\s+", header=0, names=['proj','ext','val'])
+def calculate_delta_g(fes_path, A, B, vol_corr, mode):
+    if mode == 'doms':
+        fes_data = pd.read_table(fes_path, sep="\s+", header=0, names=['proj','ext','val'])
+    else:
+        fes_data = pd.read_table(fes_path, sep="\s+", names=['proj','ext','val', 'err1', 'err2'], comment='#')
     # convert CVs to Angstroms
     fes_data.proj = fes_data.proj.multiply(10)
     fes_data.ext = fes_data.ext.multiply(10)
@@ -561,6 +583,66 @@ def make_pd_hdf():
                     k += 1
 
 
+def make_dGoT_hdf(method):
+    # print dG values for all systems 
+    if 'RMSD' in method:
+        rep_range = [0, 1, 2]
+        basins = rmsd_basins
+        tmp_folder = 'tmp_fes'
+        mode = 'doms'
+    else:
+        rep_range = [3, 4, 5]
+        basins = proj_basins
+        tmp_folder = 'sh_fes'
+        mode = 'plumed'
+
+    k = 0
+    for system in SYSTEMS.keys():
+        print(system)
+        for pdb in SYSTEMS[system]:
+            for i in rep_range:
+                # Skip missing systems
+                if method == 'fun-metaD' and system == 'BRD4' and i == 5:
+                    continue
+                wd = f"{NWDA_DIR}/{method}/{system}/{i}_output/{i}_output/{pdb}/{tmp_folder}"
+                dat_files = sorted(glob(f'{wd}/*.dat'), key=lambda x: int(x.split('.')[0].split('_')[-1]))
+                #print(dat_files)
+                dG = []
+                t = []
+                for fes_path in dat_files:
+                    dg = calculate_delta_g(fes_path,
+                                            basins[f"{system}_B"],
+                                            basins[f"{system}_U"],
+                                            vol_corr[system],
+                                            mode=mode)
+                    dG.append(dg)
+                    t.append(fes_path.split('.')[0].split('_')[-1])
+
+                inp = pd.DataFrame(columns=['t', f"R{i}"],
+                                    data=np.asarray([t, dG]).T).set_index('t')
+                inp_l = pd.concat({pdb: inp}, axis=1)
+                inp_s = pd.concat({system: inp_l}, axis=1)
+
+                if k == 0:
+                    print('First time --> Creating Files')
+                    inp_s.to_hdf(f"{DRBX_DIR}/{method}_dGoverT.h5", key='df')
+                    k += 1
+                    continue
+                new = pd.read_hdf(f"{DRBX_DIR}/{method}_dGoverT.h5", key='df')
+
+                if any([(mi == inp_s.columns)[0] for mi in new.columns]):
+                    print("Updating values in DataFrame.")
+                    new.update(inp_s)
+                else:
+                    print("Adding new values to DataFrame.")
+                    new = new.join(inp_s, how='outer')
+                # reorder columns
+                new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
+                new = new.astype(float)
+                new.to_hdf(f"{DRBX_DIR}/{method}_dGoverT.h5", key='df')
+                k += 1
+
+
 def fes_per_rx():
     # plot FES per rx for all systems
     for method in ['fun-metaD', 'fun-RMSD']:
@@ -677,13 +759,18 @@ if __name__ == "__main__":
     # find_rx()
 
     # 2, 3, 4 
-    # extract_fes_per_rx()
+    # extract_fes(mode='per_rx')
 
     # 5 - 
-    #make_tables()
-    #make_average_tables()
-    #make_paper_tables()
-    make_pd_hdf()
+    # make_tables()
+    # make_average_tables()
+    # make_paper_tables()
+    # make_pd_hdf()
+
+    # extract_fes(mode='fixed interval', stride=41)
+
+    # make_dGoT_hdf('fun-metaD')
+    make_dGoT_hdf('fun-RMSD')
 
     # make_final_FES()
 
