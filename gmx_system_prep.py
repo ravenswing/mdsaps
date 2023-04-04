@@ -19,7 +19,7 @@ import pytraj as pt
 PREP_INPUTS = ('/home/rhys/phd_tools/simulation_files/'
                'submission_scripts/Local_Dirs/00-Prep')
 OUT_DIR = '/home/rhys/Storage/ampk_metad_all_data'
-PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
+#PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
 SCRIPT_DIR = ('/home/rhys/phd_tools/simulation_files/'
               'submission_scripts/MareNostrum/class_a')
 REMOTE = 'mn:/home/ub183/ub183944/scratch/ampk_replicas'
@@ -71,11 +71,11 @@ def check_atom_order(pdb_file, prep_file):
     return atm_ord1 == atm_ord2
 
 
-def run_tleap(lig, pdb_path):
+def run_tleap(wd, lig, pdb_path, PARM_DIR):
 
     lig_params = f"{PARM_DIR}/{lig}"
 
-    ffi_lines = 'source leaprc.gaff'
+    ffi_lines = 'source leaprc.gaff2'
     lig_lines = (f"loadamberparams {lig_params}.frcmod\n"
                  f"loadamberprep {lig_params}.prep")
     pdb_lines = f"struc = loadpdb {pdb_path}"
@@ -101,8 +101,8 @@ def run_tleap(lig, pdb_path):
 
 def run_parmed(prmtop, crd, out_path):
     amber = pmd.load_file(prmtop, crd)
-    amber.save(f"{out_path}.top")
-    amber.save(f"{out_path}.gro")
+    amber.save(f"{out_path}.top", overwrite=True)
+    amber.save(f"{out_path}.gro", overwrite=True)
 
 
 def run_pdb2gmx(pdb_file, out_name):
@@ -182,8 +182,11 @@ def combine_top(prot_top, lig_top, lig_name=None, directory=None):
     # to add to the [molecules] entry
     include3 = f'{lig_res_name}                 1\n'
     # Atomtypes must appear before any [moleculetype] entry
-    #    in this case in the chain topologies
-    n1 = [i for i, s in enumerate(pro) if 'chain' in s][0]
+    #    in this case in the chain topologies (if there are multiple protein
+    #    chains in the topology
+    # n1 = [i for i, s in enumerate(pro) if 'chain' in s][0]
+    #    in the case of 1 chain:
+    n1 = [i for i, s in enumerate(pro) if 'moleculetype' in s][0]
     # Rest of lig. topology then goes before the water topology is loaded
     n2 = [i for i, s in enumerate(pro) if 'water topology' in s][0]
     # Put the new lines in the correct place in the file
@@ -213,7 +216,8 @@ def run_prep(out_dir, sys, lig, dif_size=False):
     # group_N = 17 if sys == 'a2b1'
     # and lig in ['A769', 'PF739', 'MT47', 'MK87'] else 22
     # Uncharged system = 17, charged system = 22, with added ions = 24
-    group_N = 24
+    # Multiple chains: group_N = 24
+    group_N = 20
     # Make_ndx command with custom number
     new_line = (f'echo -e "name {group_N} Protein_LIG \\n q" '
                 f'| $GMX make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx')
@@ -259,7 +263,7 @@ def fix_itp_includes(out_dir, sys,):
             f.writelines(lines)
 
 
-def setup_minim(dd, sys, lig):
+def setup_minim(dd, sys, lig, REMOTE):
     try:
         subprocess.run(['mkdir', "-p", f"{dd}/01-Min"], check=True)
     except subprocess.CalledProcessError as error:
@@ -284,11 +288,11 @@ def setup_minim(dd, sys, lig):
             print('Error code:', error.returncode,
                   '. Output:', error.output.decode("utf-8"))
     try:
-        subprocess.run(['cp -r',
-                        ('/home/rhys/AMPK/Metad_Simulations/System_Setup/'
-                         'force_field_S2P/amber14sb_gmx_s2p.ff'),
-                        f"{dd}/01-Min/"],
-                       check=True)
+        subprocess.run(('cp -r '
+                        '/home/rhys/phd_tools/'
+                        'simulation_files/forcefields/amber14sb_gmx_s2p.ff '
+                        f"{dd}/01-Min/"),
+                       check=True, shell=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
