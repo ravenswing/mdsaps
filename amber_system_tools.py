@@ -90,6 +90,31 @@ def make_restraints_list(wd, txt_in):
         f.write('\n'.join(new_file))
 
 
+def setup_minimisation(wd, nm_pos_in_path):
+    # Make the directory for the minimisation.
+    try:
+        subprocess.run(f"mkdir -p {wd}", shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    # Copy the scripts for minimisation from the sub. script directory.
+    try:
+        subprocess.run(' '.join(['cp',
+                                 f"{SCRIPT_DIR}/min*",
+                                 f"{wd}/"]), shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+
+    file_stem = wd.split('/')[nm_pos_in_path]
+    # Change the name in the running bash script (N.B. inplace!)
+    with open(f"{wd}/minim.sh", 'r') as file:
+        lines = file.read()
+        lines = lines.replace("FILE_STEM_HERE", f"{file_stem}")
+    with open(f"{wd}/minim.sh", 'w') as file:
+        file.write(lines)
+
+
 def run_minimisation(wd):
     # Exectute the bash script for minimisation
     try:

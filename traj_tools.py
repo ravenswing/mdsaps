@@ -7,10 +7,10 @@
 """
 
 import numpy as np
-import parmed as pmd
 import pytraj as pt
 import subprocess
 from glob import glob
+from parmed import gromacs, amber, load_file
 
 
 def _load_structure(in_str):
@@ -323,8 +323,8 @@ def amber_to_gromacs(top_file, crd_file):
     # Check that the coordinate file has a readable extension
     assert crd_file.split('.')[-1] in ['rst7', 'ncrst', 'restrt'], "ERROR"
 
-    # Load the system
-    amber = pmd.load_file(top_file, crd_file)
+    # Load the system (from ParmEd)
+    amber = load_file(top_file, crd_file)
     # Write the new Gromacs topology file (.top)
     amber.save(f"{top_file.split('.')[0]}_a2g.top", overwrite=True)
     # Write the new Gromacs coordinate file (.gro)
@@ -334,13 +334,24 @@ def amber_to_gromacs(top_file, crd_file):
 def gromacs_to_amber(top_file, crd_file):
     ''' Convert a system from Gromacs --> Amber using ParmEd '''
     # Check that the topology has a readable extension
-    assert top_file.split('.')[-1] == '.top', "ERROR"
+    assert top_file.split('.')[-1] == 'top', "ERROR"
     # Check that the coordinate file has a readable extension
-    assert crd_file.split('.')[-1] == '.gro', "ERROR"
+    assert crd_file.split('.')[-1] == 'gro', "ERROR"
 
-    # Load the system
-    amber = pmd.load_file(top_file, crd_file)
+    # Import the Gromacs topology (gromacs from ParmEd)
+    gmx_top = gromacs.GromacsTopologyFile(top_file)
+    # Import the Gromacs coordinates
+    gmx_gro = gromacs.GromacsGroFile.parse(crd_file)
+    # Exchange some of the information as Amber/Gromacs files store dif. info
+    gmx_top.box = gmx_gro.box  # (Needed because .prmtop contains box info)
+    gmx_top.positions = gmx_gro.positions
+    # Create Amber parm object (amber from ParmEd)
+    amb_prm = amber.AmberParm.from_structure(gmx_top)
     # Write the new Amber topology file (.prmtop)
-    amber.save(f"{top_file.split('.')[0]}_a2g.prmtop", overwrite=True)
+    amb_prm.write_parm(f"{top_file.split('.')[0]}_g2a.prmtop")
     # Write the new Amber coordinate file (.rst7)
-    amber.save(f"{crd_file.split('.')[0]}_a2g.rst7", overwrite=True)
+    amb_crd = amber.AmberAsciiRestart(f"{crd_file.split('.')[0]}_g2a.rst7",
+                                      mode="w")
+    amb_crd.coordinates = gmx_top.coordinates
+    amb_crd.box = gmx_top.box
+    amb_crd.close()
