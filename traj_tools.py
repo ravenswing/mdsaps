@@ -7,6 +7,7 @@
 """
 
 import numpy as np
+import parmed as pmd
 import pytraj as pt
 import subprocess
 from glob import glob
@@ -313,3 +314,33 @@ def format_pdb(info):
 
     # Return the new line
     return new_line
+
+
+def amber_to_gromacs(top_file, crd_file):
+    ''' Convert a system from Amber --> Gromacs using ParmEd '''
+    # Check that the topology has a readable extension
+    assert top_file.split('.')[-1] in ['parm7', 'prmtop'], "ERROR"
+    # Check that the coordinate file has a readable extension
+    assert crd_file.split('.')[-1] in ['rst7', 'ncrst', 'restrt'], "ERROR"
+
+    # Load the system
+    amber = pmd.load_file(top_file, crd_file)
+    # Write the new Gromacs topology file (.top)
+    amber.save(f"{top_file.split('.')[0]}_a2g.top", overwrite=True)
+    # Write the new Gromacs coordinate file (.gro)
+    amber.save(f"{crd_file.split('.')[0]}_a2g.gro", overwrite=True)
+
+
+def gromacs_to_amber(top_file, crd_file):
+    ''' Convert a system from Gromacs --> Amber using ParmEd '''
+    # Check that the topology has a readable extension
+    assert top_file.split('.')[-1] == '.top', "ERROR"
+    # Check that the coordinate file has a readable extension
+    assert crd_file.split('.')[-1] == '.gro', "ERROR"
+
+    # Load the system
+    amber = pmd.load_file(top_file, crd_file)
+    # Write the new Amber topology file (.prmtop)
+    amber.save(f"{top_file.split('.')[0]}_a2g.prmtop", overwrite=True)
+    # Write the new Amber coordinate file (.rst7)
+    amber.save(f"{crd_file.split('.')[0]}_a2g.rst7", overwrite=True)
