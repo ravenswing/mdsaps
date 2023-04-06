@@ -20,6 +20,34 @@ SCRIPT_DIR = ("/home/rhys/phd_tools/simulation_files/"
               "submission_scripts/Amber/md")
 
 
+def _run_tleap(wd, input_file):
+    # Print a starting message
+    print(f"STARTING  | TLEAP with input:  {input_file}")
+    # Run CPPTRAJ
+    try:
+        subprocess.run(f"tleap -f {wd}/{input_file}",
+                       shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    # Print another message when finished successfully
+    print(f"COMPLETED | TLEAP with input:  {input_file}")
+
+
+def build_system(wd, lig_param_path, complex_path, out_name):
+    # Add final protein res. no. to min0 input (N.B. inplace!)
+    with open(f"{SCRIPT_DIR}/template_tleap.in", 'r') as file:
+        lines = file.read()
+        lines = lines.replace('LIG_PREP', lig_param_path+'.prep')
+        lines = lines.replace('LIG_FRCMOD', lig_param_path+'.frcmod')
+        lines = lines.replace('COMPLEX_PDB', complex_path)
+        lines = lines.replace('OUTNAME', out_name)
+    with open(f"{wd}/build.tleap", 'w') as file:
+        file.write(lines)
+
+    _run_tleap(wd, 'build.tleap')
+
+
 def prepare_min_inputs(wd, restraints=False):
     # Locate the template scripts
     if restraints:
