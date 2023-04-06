@@ -23,13 +23,16 @@ SCRIPT_DIR = ("/home/rhys/phd_tools/simulation_files/"
 def _run_tleap(wd, input_file):
     # Print a starting message
     print(f"STARTING  | TLEAP with input:  {input_file}")
-    # Run CPPTRAJ
+    # Run TLEAP
     try:
-        subprocess.run(f"tleap -f {wd}/{input_file}",
-                       shell=True, check=True)
+        o = subprocess.run(f"tleap -f {wd}/{input_file}",
+                           shell=True, check=True,
+                           capture_output=True, text=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
+    with open(f"{wd}/leap.log", 'w') as f:
+        f.write(o.stdout)
     # Print another message when finished successfully
     print(f"COMPLETED | TLEAP with input:  {input_file}")
 
