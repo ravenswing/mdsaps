@@ -355,3 +355,18 @@ def gromacs_to_amber(top_file, crd_file):
     amb_crd.coordinates = gmx_top.coordinates
     amb_crd.box = gmx_top.box
     amb_crd.close()
+
+
+def amber_to_pdb(top_file, crd_file):
+    ''' Convert a system from Amber --> PDB using PyTraj '''
+    # Check that the topology has a readable extension
+    assert top_file.split('.')[-1] in ['parm7', 'prmtop'], "ERROR"
+    # Check that the coordinate file has a readable extension
+    assert crd_file.split('.')[-1] in ['rst7', 'ncrst', 'restrt'], "ERROR"
+
+    # Load the amber structure into PyTraj
+    to_convert = pt.load(crd_file, top_file)
+    # Write the new .pdb file
+    pt.write_traj(f"{crd_file.split('.')[0]}_a2p.pdb",
+                  to_convert,
+                  overwrite=True)
