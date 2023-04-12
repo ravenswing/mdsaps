@@ -318,7 +318,16 @@ def next_step(ndir):
                       '. Output:', error.output.decode("utf-8"))
 
 
-def make_plumed(source_dat, ref_pdb, out_dat):
+def make_plumed(source_dat, ref_pdb, out_dat,
+                ligID, p0, p1):
+    '''
+    INPUTS:
+        source_dat: Path of template plumed.dat file
+        ref_pdb:    Path to system pdb from prev. simulations
+        out_dat:    Path to save the new plumed.dat file
+        ligID:      Residue number of the liganf in ref_pdb
+        p0 & p1:    List of atom indices that define the funnel anchor points
+    '''
     # Extract the atom numbers for input into plumed file...
     with open(ref_pdb, 'r') as f:
         pdb = f.readlines()
@@ -326,16 +335,16 @@ def make_plumed(source_dat, ref_pdb, out_dat):
     lines = [ln.split() for ln in pdb if 'ATOM' in ln]
     lines = [[int(ln[1]), ln[3], int(ln[5])] for ln in lines]
     # Find those atoms that correspind to the ligand
-    ligID = 369 if 'a2b1' in ref_pdb else 368
+    # ligID = 369 if 'a2b1' in ref_pdb else 368
     lig_atoms = [ln[0] for ln in lines if ln[2] == ligID]
     # Set extent of ligand
     ligN = [min(lig_atoms), max(lig_atoms)]
     # Set extent of protein (assuming from 1 to ligand)
     protN = [1, ligN[0]-1]
     # p0 is same atoms for both a2b1 and a2b2
-    p0 = [1334, 166]
+    # p0 = [1334, 166]
     # p1 is different for a2b1 and a2b2
-    p1 = [4863, 662] if 'a2b1' in ref_pdb else [4885, 662]
+    # p1 = [4863, 662] if 'a2b1' in ref_pdb else [4885, 662]
 
     # Generic lines for readability
     header1 = ('#####################################\n'

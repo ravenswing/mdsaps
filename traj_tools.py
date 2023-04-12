@@ -355,14 +355,14 @@ def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
             else:
                 file1.append(f"reference {ref_str}")
             file1.append('rms reference @CA,C,N,O')
-            file1.append(f"trajout {directory}/snapshots/{stem}.pdb multi chainid A")
+            file1.append(f"trajout {directory}/snapshots/{stem}.pdb multi keepext chainid A")
             file1.append("go")
             # Write all to cpptraj input file
             with open(f"{directory}/sn{snl[0]}.in", 'w') as file:
                 file.writelines('\n'.join(file1))
             # Run cpptraj using that input file
             _run_cpptraj(directory, f"sn{snl[0]}.in")
-            snaps = np.arange(snl[0], snl[1], snl[2])
+            ''' ONLY NECESSARY IF KEEPEXT NOT FUNCTIONAL
             for i in np.arange(len(snaps)):
                 print(i, snaps[i])
                 try:
@@ -373,6 +373,7 @@ def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
                 except subprocess.CalledProcessError as error:
                     print('Error code:', error.returncode,
                           '. Output:', error.output.decode("utf-8"))
+            '''
             # Align all output structures
             for path in glob(f"{directory}/snapshots/*.pdb"):
                 align(path,
