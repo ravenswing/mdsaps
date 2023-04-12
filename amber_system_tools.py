@@ -1,6 +1,6 @@
 """
 ===============================================================================
-                            AMBER SYSTEM PREPARATION
+                              AMBER SYSTEM TOOLS
 ===============================================================================
 
         Required inputs:
@@ -12,9 +12,9 @@
 
 import numpy as np
 import pandas as pd
-from glob import glob
+import pytraj as pt
 import subprocess
-
+from glob import glob
 
 SCRIPT_DIR = ("/home/rhys/phd_tools/simulation_files/"
               "submission_scripts/Amber/md")
@@ -194,6 +194,24 @@ def transfer(wd):
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
+
+
+def autoimage_file(top_file, crd_file):
+    ''' Convert a system from Amber --> PDB using PyTraj '''
+    # Check that the topology has a readable extension
+    assert top_file.split('.')[-1] in ['parm7', 'prmtop'], "ERROR"
+    # Check that the coordinate file has a readable extension
+    assert crd_file.split('.')[-1] in ['rst7', 'ncrst', 'restrt'], "ERROR"
+
+    # Load the amber structure into PyTraj
+    to_convert = pt.load(crd_file, top_file)
+    to_convert = to_convert.autoimage()
+    # Write the new .pdb file
+    out_name = f"{crd_file.split('.')[0]}_ai.rst7"
+    pt.write_traj(out_name,
+                  to_convert,
+                  options="keepext",
+                  overwrite=True)
 
 
 if __name__ == "main":
