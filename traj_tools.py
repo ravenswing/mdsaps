@@ -131,11 +131,6 @@ def amber_to_pdb(top_file, crd_file, autoimage=False):
                   to_convert,
                   overwrite=True)
 
-import pickle
-
-import MDAnalysis as mda
-from MDAnalysis.analysis import rms
-
 
 def _init_universe(in_str):
     # .pdb only req. 1 input
@@ -158,10 +153,14 @@ def _init_universe(in_str):
 def measure_rmsd(top_path, trj_path, ref_str, rmsd_groups,
                  aln_group='backbone'):
     # Load the topology and trajectory
-    traj = _init_universe([top_path, trj_path])
-    # Load ref. structure if path is given
-    ref = _init_universe(ref_str)
-    R = rms.RMSD(traj,  # universe to align
+    U = _init_universe([top_path, trj_path])
+    if ref_str:
+        # Load ref. structure if path is given
+        ref = _init_universe(ref_str)
+    else:
+        # If ref_str = 0 i.e. use starting frame, assign ref as input traj.
+        ref = U
+    R = rms.RMSD(U,  # universe to align
                  ref,  # reference universe or atomgroup
                  select=aln_group,  # group to superimpose and calculate RMSD
                  groupselections=rmsd_groups,  # groups for RMSD
@@ -173,8 +172,7 @@ def calculate_rmsd(top_path, trj_path, ref_str,
                    out_path=None, to_pandas=False,
                    align='backbone', measure=['backbone']):
 
-    R = measure_rmsd(top_path, trj_path, ref_str,
-                     rmsd_groups=measure, aln_groups=align)
+    R = measure_rmsd(top_path, trj_path, ref_str, measure, aln_group=align)
 
     if to_pandas:
         print('WIP')
@@ -191,6 +189,7 @@ def calculate_rmsd(top_path, trj_path, ref_str,
                 print(f"Writing RMSD file to: {outname}")
             with open(outname, 'wb') as f:
                 pickle.dump(rmsd, f)
+
 
 '''
 def calculate_rmsd(wd, trj_rgx, top_rgx, ref_rgx,
@@ -405,8 +404,8 @@ def cut_traj(trj_path, top, out_path, denom=100, split=False, strip_mask=None):
 
 
 # PYTRAJ ==> AMBER
-def measure_rmsd(trj_path, top_path, ref_str, rmsd_mask,
-                 aln_mask='@CA,C,N,O', nofit=True):
+def amber_rmsd(trj_path, top_path, ref_str, rmsd_mask,
+               aln_mask='@CA,C,N,O', nofit=True):
     # Load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # Load ref. structure if path is given
