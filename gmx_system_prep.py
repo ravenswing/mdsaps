@@ -385,6 +385,40 @@ def split_pdb(init_pdb):
                   pdb[f':{ligN}'], overwrite=True)
 
 
+def make_readable_gro(gro_path, top_path, out_path=None):
+
+    tmp_mdp = f"{PREP_INPUTS}/prep.mdp"
+    tmp_tpr = '/tmp/tmp.tpr'
+    if not out_path:
+        out_path = (f"{'/'.join(gro_path.split('/')[:-1])}/"
+                    f"Readable_{gro_path.split('/')[-1]}")
+    # run
+    try:
+        subprocess.run(("gmx_mpi grompp "
+                        f"-f {tmp_mdp} "
+                        f"-c {gro_path} -p {top_path} "
+                        f"-o {tmp_tpr}"),
+                       check=True,
+                       shell=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+
+    try:
+        subprocess.run(("echo System | gmx_mpi trjconv "
+                        f"-f {gro_path} "
+                        f"-s {tmp_tpr} "
+                        f"-o {out_path} "
+                        '-pbc mol -ur compact'),
+                       check=True,
+                       shell=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+
+    subprocess.run(f"rm {tmp_tpr}", shell=True)
+
+
 if __name__ == "__main__":
 
     print('started')
