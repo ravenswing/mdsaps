@@ -385,38 +385,87 @@ def split_pdb(init_pdb):
                   pdb[f':{ligN}'], overwrite=True)
 
 
-def make_readable_gro(gro_path, top_path, out_path=None):
+def make_readable_gro(gro_path, top_path, tpr=None, out_path=None,
+                      reconstruct=False):
+    # Set flags for removal of file (if necessary)
+    rm_tpr = False
+    rm_gro = False
+    # If no tpr is provided, use a temporary copy of the prep.mdp
+    if not tpr:
+        # Path for dummy .mdp file
+        tmp_mdp = f"{PREP_INPUTS}/prep.mdp"
+        # Temporary file in temp dir.
+        tmp_tpr = '/tmp/tmp.tpr'
+        # run grompp to create tmp.tpr
+        try:
+            subprocess.run(("gmx_mpi grompp "
+                            f"-f {tmp_mdp} "
+                            f"-c {gro_path} -p {top_path} "
+                            f"-o {tmp_tpr}"),
+                           check=True,
+                           shell=True)
+        except subprocess.CalledProcessError as error:
+            print('Error code:', error.returncode,
+                  '. Output:', error.output.decode("utf-8"))
+        # Set the temporary tpr for use in trjconv
+        tpr = tmp_tpr
+        # Flag for the removal of the temp tpr once complete
+        rm_tpr = True
 
-    tmp_mdp = f"{PREP_INPUTS}/prep.mdp"
-    tmp_tpr = '/tmp/tmp.tpr'
+    # If no out_path is provided, add Readable_ to the gro file name
     if not out_path:
         out_path = (f"{'/'.join(gro_path.split('/')[:-1])}/"
                     f"Readable_{gro_path.split('/')[-1]}")
-    # run
-    try:
-        subprocess.run(("gmx_mpi grompp "
-                        f"-f {tmp_mdp} "
-                        f"-c {gro_path} -p {top_path} "
-                        f"-o {tmp_tpr}"),
-                       check=True,
-                       shell=True)
-    except subprocess.CalledProcessError as error:
-        print('Error code:', error.returncode,
-              '. Output:', error.output.decode("utf-8"))
 
+    # If the -center option is not enough, use brute force
+    if reconstruct:
+        # Step 1: -pbc whole, produces tmp1.gro
+        try:
+            subprocess.run(("echo System | gmx_mpi trjconv "
+                            f"-f {gro_path} "
+                            f"-s {tpr} "
+                            "-o /tmp/tmp1.gro "
+                            '-pbc whole '),
+                           check=True,
+                           shell=True)
+        except subprocess.CalledProcessError as error:
+            print('Error code:', error.returncode,
+                  '. Output:', error.output.decode("utf-8"))
+        # Step 2: cluster, produces tmp2.gro
+        try:
+            subprocess.run(("echo Protein System | gmx_mpi trjconv "
+                            "-f /tmp/tmp1.gro "
+                            f"-s {tpr} "
+                            "-o /tmp/tmp2.gro "
+                            '-pbc cluster '),
+                           check=True,
+                           shell=True)
+        except subprocess.CalledProcessError as error:
+            print('Error code:', error.returncode,
+                  '. Output:', error.output.decode("utf-8"))
+        # Set the new, clustered gro file as the input for Step 3
+        gro_path = '/tmp/tmp2.gro'
+        # Flag for the removal of the temp gro files once complete
+        rm_gro = True
+
+    # run trjconv to produce a readable output
     try:
-        subprocess.run(("echo System | gmx_mpi trjconv "
+        subprocess.run(("echo Protein System | gmx_mpi trjconv "
                         f"-f {gro_path} "
-                        f"-s {tmp_tpr} "
+                        f"-s {tpr} "
                         f"-o {out_path} "
-                        '-pbc mol -ur compact'),
+                        '-pbc mol -ur compact -center'),
                        check=True,
                        shell=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
-
-    subprocess.run(f"rm {tmp_tpr}", shell=True)
+    # Remove temp tpr if necessary
+    if rm_tpr:
+        subprocess.run(f"rm {tmp_tpr}", shell=True)
+    # Remove temp gro files if necessary
+    if rm_gro:
+        subprocess.run("rm /tmp/*.gro", shell=True)
 
 
 if __name__ == "__main__":
