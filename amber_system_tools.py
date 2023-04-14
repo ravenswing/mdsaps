@@ -51,7 +51,22 @@ def build_system(wd, lig_param_path, complex_path, out_name):
     _run_tleap(wd, 'build.tleap')
 
 
-def prepare_min_inputs(wd, restraints=False):
+def setup_minimisation(wd, pdb_filename, nm_pos_in_path, restraints=False):
+    '''
+        1. Creates the directory for minimisation
+        2. Copies in the template input scripts
+        3. Edits the Protein residue no. in min0
+        4. Edits the Water residue no.s in min1
+        5. Adds the filename to minim.sh
+    '''
+    SCRIPT_DIR = ("/home/rhys/phd_tools/simulation_files/"
+                  "submission_scripts/Amber/md")
+    # Make the directory for the minimisation.
+    try:
+        subprocess.run(f"mkdir -p {wd}", shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
     # Locate the template scripts
     if restraints:
         SCRIPT_DIR += "_restraints"
@@ -63,7 +78,7 @@ def prepare_min_inputs(wd, restraints=False):
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # Read in pdb to extract residue numbers from
-    with open(f"{wd}/{FN}.pdb", 'r') as f:
+    with open(f"{wd}/{pdb_filename}", 'r') as f:
         pdb = f.readlines()
     # Identify lines within pdb that contain TER
     i_ter = []
@@ -74,7 +89,7 @@ def prepare_min_inputs(wd, restraints=False):
     prt_end = pdb[i_ter[0]-1].split()[4]
     # First water res. no. (first line with WAT)
     wat_str = [line.split()[4] for line in pdb if 'WAT' in line][0]
-    # Last water res. no. (line before last line with WAT)
+    # Last water res. no. (line before last line with TER)
     wat_end = pdb[i_ter[-1]-1].split()[4]
     # Add final protein res. no. to min0 input (N.B. inplace!)
     with open(f"{wd}/min0.in", 'r') as file:
@@ -88,10 +103,11 @@ def prepare_min_inputs(wd, restraints=False):
         lines = lines.replace("WATER_RES", f"{wat_str} {wat_end}")
     with open(f"{wd}/min1.in", 'w') as file:
         file.write(lines)
+    file_stem = wd.split('/')[nm_pos_in_path]
     # Change the name in the running bash script (N.B. inplace!)
     with open(f"{wd}/minim.sh", 'r') as file:
         lines = file.read()
-        lines = lines.replace("FILE_STEM_HERE", f"{FN}")
+        lines = lines.replace("FILE_STEM_HERE", f"{file_stem}")
     with open(f"{wd}/minim.sh", 'w') as file:
         file.write(lines)
 
@@ -120,30 +136,6 @@ def make_restraints_list(wd, txt_in):
     with open(f"{wd}/restraints.list", 'w+') as f:
         f.write('\n'.join(new_file))
 
-
-def setup_minimisation(wd, nm_pos_in_path):
-    # Make the directory for the minimisation.
-    try:
-        subprocess.run(f"mkdir -p {wd}", shell=True, check=True)
-    except subprocess.CalledProcessError as error:
-        print('Error code:', error.returncode,
-              '. Output:', error.output.decode("utf-8"))
-    # Copy the scripts for minimisation from the sub. script directory.
-    try:
-        subprocess.run(' '.join(['cp',
-                                 f"{SCRIPT_DIR}/min*",
-                                 f"{wd}/"]), shell=True, check=True)
-    except subprocess.CalledProcessError as error:
-        print('Error code:', error.returncode,
-              '. Output:', error.output.decode("utf-8"))
-
-    file_stem = wd.split('/')[nm_pos_in_path]
-    # Change the name in the running bash script (N.B. inplace!)
-    with open(f"{wd}/minim.sh", 'r') as file:
-        lines = file.read()
-        lines = lines.replace("FILE_STEM_HERE", f"{file_stem}")
-    with open(f"{wd}/minim.sh", 'w') as file:
-        file.write(lines)
 
 
 def run_minimisation(wd):
@@ -224,8 +216,9 @@ if __name__ == "main":
     # MINIMISATION
     for pocket in POCKETS:
         wd = f"{DATA_DIR}/{pocket.lower()}"
-        FN = f"complex_ship2_{pocket}+Lig21"
-        make_restraints_list(wd, f"{DATA_DIR}/SHIP Project - Lig21 Restraints.csv")
+        make_restraints_list(wd,
+                             f"complex_ship2_{pocket}+Lig21",
+                             f"{DATA_DIR}/SHIP Project - Lig21 Restraints.csv")
         prepare_min_inputs(wd, restraints=True)
 
     # PRODUCTION
