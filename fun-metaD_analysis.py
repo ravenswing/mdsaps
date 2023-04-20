@@ -35,8 +35,7 @@ SYSTS = ['a2b1', 'a2b2']
 LIGS = ['A769', 'PF739', 'SC4', 'MT47', 'MK87']
 
 # Where to put the plots and other results
-SAVE_DIR = '/home/rhys/Dropbox/RESEARCH/Project_AMPK/Figures/New_Replica_Plots'
-
+SAVE_DIR = '/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_AMPK/Fun-metaD_Results/Plots_wReplicas'
 
 def run_sumhills(wd, name, stride=None):
     cmd = f"plumed sum_hills --hills {wd}/HILLS --outfile {wd}/{name}_FES --mintozero"
@@ -93,7 +92,7 @@ def fes_multiplot(cmax=32, replicas=False):
                         'f': 0.15,
                         'h': 1.5}
         i = 0
-        for lig in LIGS:
+       for lig in LIGS:
             j = 0
             for system in SYSTS:
                 data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{system}+{lig}_FES', False)
