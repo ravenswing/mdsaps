@@ -176,6 +176,7 @@ def calculate_rmsd(top_path, trj_path, ref_str,
 
     if to_pandas:
         print('WIP')
+        # WHEN DOING: TAKE FROM funmetaD analysis!
     else:
         if out_path:
             print(f"Writing RMSD file to: {out_path}")

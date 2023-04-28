@@ -26,7 +26,7 @@ import MDAnalysis as mda
 from MDAnalysis.analysis import diffusionmap, align, rms
 
 sys.path.append('/home/rhys/phd_tools/SAPS')
-import analysis_tools as at
+import traj_tools as tt
 
 ANG = "\u212B"
 
@@ -92,7 +92,7 @@ def fes_multiplot(cmax=32, replicas=False):
                         'f': 0.15,
                         'h': 1.5}
         i = 0
-       for lig in LIGS:
+        for lig in LIGS:
             j = 0
             for system in SYSTS:
                 data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{system}+{lig}_FES', False)
@@ -257,9 +257,9 @@ def fes_by_replica(basins=None):
                     bbox_inches='tight')
 
 
-def fes_by_system(basins=None):
-    for lig in LIGS:
-        for system in SYSTS:
+def fes_by_system(ligand_list, system_list, n_reps, basins=None):
+    for lig in ligand_list:
+        for system in system_list:
             fig, ax = plt.subplots(1, 3, figsize=(24, 6))
             plt.suptitle(f'FES for Fun-MetaD ({system} + {lig})')
             plt.subplots_adjust(top=0.85, right=0.915)
@@ -271,7 +271,7 @@ def fes_by_system(basins=None):
                             'h': 1.5}
 
             max_vals = []
-            for rep in ['R'+str(x) for x in np.arange(3)+1]:
+            for rep in ['R'+str(x) for x in np.arange(n_reps)+1]:
                 data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
                 data[2] = data[2]/4.184
                 max_non_inf = np.amax(data[2][np.isfinite(data[2])])
@@ -281,7 +281,7 @@ def fes_by_system(basins=None):
             cmax = max(max_vals)+1
 
             i = 0
-            for rep in ['R'+str(x) for x in np.arange(3)+1]:
+            for rep in ['R'+str(x) for x in np.arange(n_reps)+1]:
                 data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
                 data[2] = data[2]/4.184
                 max_non_inf = np.amax(data[2][np.isfinite(data[2])])
@@ -310,8 +310,48 @@ def fes_by_system(basins=None):
             cbar = plt.colorbar(cmap, cax=cax, aspect=10,
                                 ticks=np.arange(0., cmax, 2.0))
             cbar.set_label('Free Energy / kcal/mol', fontsize=10)
-            fig.savefig(f'{SAVE_DIR}/FES-by-System/{system}+{lig}_FES.png', dpi=450,
+            fig.savefig(f'{SAVE_DIR}/FES/{system}+{lig}_FES.png', dpi=450,
                         bbox_inches='tight')
+
+
+def fes_highlight(system, lig, rep, basins=None):
+    plt.rcParams.update({'font.size': 16})
+    fig, ax = plt.subplots(figsize=(16, 10))
+    plt.subplots_adjust(top=0.85, right=0.915)
+    funnel_parms = {'lw': 0.0,
+                    'uw': 4.5,
+                    'sc': 2.5,
+                    'b': 1.0,
+                    'f': 0.15,
+                    'h': 1.5}
+    data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
+    data[2] = data[2]/4.184
+    cmax = np.amax(data[2][np.isfinite(data[2])])+1
+    data[2] = data[2]*4.184
+    cmap = graphics.two_cv_contour(data, labels, cmax, ax, funnel_parms)
+    # with open(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/COLVAR', 'r') as f:
+        # t = float(f.readlines()[-1].split()[0])/1000
+    # ax.set_title(f"{system}+{lig} (t = {t:.0f}ns)")
+    ax.set_xlabel(f"Funnel CV - Projection / {ANG}")
+    ax.set_ylabel(f"Funnel CV - Extension / {ANG}")
+    if basins is not None:
+        b1 = plt.Rectangle((basins[f'{lig}-bnd'][0]/10, basins[f'{lig}-bnd'][2]/10),
+                           (basins[f'{lig}-bnd'][1]/10 - basins[f'{lig}-bnd'][0]/10),
+                           basins[f'{lig}-bnd'][3]/10,
+                           ls='--', fc='none', ec='k', lw=2.0)
+        ax.add_patch(b1)
+        b2 = plt.Rectangle((basins['unbound'][0], basins['unbound'][2]),
+                        (basins['unbound'][1] - basins['unbound'][0]),
+                        basins['unbound'][3],
+                        ls='--', fc='none', ec='k', lw=2.0)
+        ax.add_patch(b2)
+
+    cax = plt.axes([0.98, 0.11, 0.01, 0.77])
+    cbar = plt.colorbar(cmap, cax=cax, aspect=10,
+                        ticks=np.arange(0., cmax, 2.0))
+    cbar.set_label('Free Energy (kcal/mol)')
+    fig.savefig(f'{SAVE_DIR}/FES/{system}+{lig}_{rep}_SOLO.png', dpi=450,
+                bbox_inches='tight')
 
 
 def gismo_traj(wd, in_path, out_path, tpr='min.tpr', ndx='i.ndx'):
@@ -365,21 +405,21 @@ if __name__ == "__main__":
     i = 0
     for system in SYSTS:
         for lig in LIGS:
-            # for rep in ['R'+str(x) for x in np.arange(3)+1]:
-            for rep in ['R2']:
+            for rep in ['R'+str(x) for x in np.arange(3)+1]:
+            # for rep in ['R1']:
                 # Define the working directory for each analysis
                 wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}"
+                print(system, lig, rep)
 
                 '''
-                print(system, lig, rep)
                 # Create a final FES from the HILLS file
                 run_sumhills(wd, f"{system}+{lig}")
                 # Create a FES over time (every 250 ns)
                 run_sumhills(wd, f"{system}+{lig}", stride=125000)
                 '''
-
                 '''
-                new_data = at.measure_rmsd(f"{wd}/md_dry.pdb",
+                # LIGAND & BACKBONE RMSD
+                new_data = tt.measure_rmsd(f"{wd}/md_dry.pdb",
                     f"{wd}/metad_{system}+{lig}_final.xtc",
                     f"{wd}/md_dry.pdb",
                     [f"resname {ligand_res_names[lig]} and not name H*"]).run()
@@ -427,6 +467,48 @@ if __name__ == "__main__":
                 new2.to_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
 
                 '''
+
+                ligand_atoms = {'A769': [43,44,45,46,47,48,49,52,58],
+                                'PF739': [43,44,46,48,50,51,52,53,55],
+                                'SC4': [38,39,40,41,42,43,44,45,46],
+                                'MT47': [21,23,25,26,27,28,29,36,37,39],
+                                'MK87': [24,25,26,27,28,29,30,31,32]}
+                ligand_core = f"{' or '.join([f'id {5900+x}' for x in ligand_atoms[lig]])}"
+                print(ligand_core)
+                # OTHER RMSD --> H5 FILE
+                to_measure = [ligand_core]
+                to_align = 'backbone'
+                out_name = 'Ligand_Core'
+                new_data = tt.measure_rmsd(f"{wd}/md_dry.pdb",
+                                           f"{wd}/metad_{system}+{lig}_final.xtc",
+                                           f"{wd}/md_dry.pdb",
+                                           to_measure,
+                                           aln_group=to_align).run()
+
+                # measured RMSD:
+                inp2 = pd.DataFrame(columns=['t', rep],
+                                    data=new_data.results.rmsd[:, [1, 3]]).set_index('t')
+                inp_l2 = pd.concat({lig: inp2}, axis=1)
+                inp_s2 = pd.concat({system: inp_l2}, axis=1)
+
+                if i == 0:
+                    print('First time --> Creating File')
+                    inp_s2.to_hdf(f"{DATA_DIR}/{out_name}_rmsd.h5", key='df')
+                    i += 1
+                    continue
+                print('Further time --> Reading File & Adding Data')
+                new2 = pd.read_hdf(f"{DATA_DIR}/{out_name}_rmsd.h5", key='df')
+
+                if any([(mi == inp_s2.columns)[0] for mi in new2.columns]):
+                    print("Updating values in DataFrame.")
+                    new2.update(inp_s2)
+                else:
+                    print("Adding new values to DataFrame.")
+                    new2 = new2.join(inp_s2)
+                # reorder columns
+                new2 = new2.iloc[:, new2.columns.sortlevel(0, sort_remaining=True)[1]]
+                new2.to_hdf(f"{DATA_DIR}/{out_name}_rmsd.h5", key='df')
+
                 '''
                 new_strideplot(wd,
                             f"{system}+{lig}",
@@ -434,14 +516,16 @@ if __name__ == "__main__":
                             #                   proj       ext
                             basins={'bound':   [0.0, 1.0, 0.0, 0.75],
                                     'unbound': [3.5, 4.5, 0.0, 0.5]})
-        '''
+                '''
 
+                '''
                 gismo_traj(wd, f"metad_{system}+{lig}_final.xtc",
                            f"{system}+{lig}_{rep}_GISMO.xtc")
                 gismo_colvar(wd,
                              out_colvar=f"{system}+{lig}_{rep}_GISMO.colvar")
+                '''
 
     '''
     fes_by_replica(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})
     fes_by_system(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})
-    '''
+    ''' 
