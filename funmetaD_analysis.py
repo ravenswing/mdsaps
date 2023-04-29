@@ -18,6 +18,7 @@ from math import ceil
 sys.path.append('/home/rhys/phd_tools/python_scripts')
 import graphics
 import load_data as load
+import plotly.graph_objects as go
 
 import shutil
 from math import floor
@@ -352,6 +353,78 @@ def fes_highlight(system, lig, rep, basins=None):
     cbar.set_label('Free Energy (kcal/mol)')
     fig.savefig(f'{SAVE_DIR}/FES/{system}+{lig}_{rep}_SOLO.png', dpi=450,
                 bbox_inches='tight')
+
+def fes_highlight2(system, lig, rep, CLR, basins=None,):
+
+    funnel_parms = {'lw': 0.0,
+                    'uw': 4.5,
+                    'sc': 2.5,
+                    'b': 1.0,
+                    'f': 0.15,
+                    'h': 1.5}
+    data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
+    data[2] = data[2]/4.184
+    cmax = np.amax(data[2][np.isfinite(data[2])])+1
+
+    fig = go.Figure(data =
+                    go.Contour(
+                        z=data[2],
+                        x=data[0], # horizontal axis
+                        y=data[1], # vertical axis
+                        colorscale='RdYlBu',
+                        contours=dict(
+                           start=0,
+                           end=cmax,
+                           size=2),
+                        colorbar=dict(
+                                    title='Free Energy (kcal/mol)',
+                                    titleside='right')
+                ))
+    # format axes
+    fig.update_xaxes(showline=True,
+                        linecolor=CLR['ax'],
+                        title_text = f"Funnel CV - Projection / {ANG}",
+                        linewidth=0.5,
+                        ticks='outside', minor_ticks='outside')
+    fig.update_yaxes(showline=True,
+                        linecolor=CLR['ax'],
+                        title_text = f"Funnel CV - Extension / {ANG}",
+                        linewidth=0.5,
+                        ticks='outside', minor_ticks='outside')
+
+    # format the rest of the figure
+    fig.update_layout(height=1600, width=2200,
+                      title_text="RMSD for all systems",
+                      font=dict(color=CLR['ax'],
+                                family='Arial', size=32),
+                      plot_bgcolor='White',
+                      showlegend=False)
+
+    fig.add_shape(type="rect",
+                  x0=basins[f"{lig}-bnd"][0]/10,
+                  x1=basins[f"{lig}-bnd"][1]/10,
+                  y0=basins[f"{lig}-bnd"][2]/10,
+                  y1=basins[f"{lig}-bnd"][3]/10,
+                  line_dash='dash',
+                  line=dict(color=CLR['ax'], width=5))
+
+    fig.add_shape(type="rect",
+                  x0=basins[f"unbound"][0]/10,
+                  x1=basins[f"unbound"][1]/10,
+                  y0=basins[f"unbound"][2]/10,
+                  y1=basins[f"unbound"][3]/10,
+                  line_dash='dash',
+                  line=dict(color=CLR['ax'], width=5))
+
+    SAVE_DIR = '../Fun-metaD_Results/Plots_wReplicas'
+    fig.write_image(f"{SAVE_DIR}/{system}_{lig}_{rep}_soloFES.png", scale=2)
+
+    # ax.set_xlabel(
+    # ax.set_ylabel(
+    # b1 = plt.Rectangle((basins[f'{lig}-bnd'][0]/10, basins[f'{lig}-bnd'][2]/10),
+
+    # cbar.set_label('Free Energy (kcal/mol)') 
+
 
 
 def gismo_traj(wd, in_path, out_path, tpr='min.tpr', ndx='i.ndx'):
