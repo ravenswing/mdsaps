@@ -315,45 +315,6 @@ def fes_by_system(ligand_list, system_list, n_reps, basins=None):
                         bbox_inches='tight')
 
 
-def fes_highlight(system, lig, rep, basins=None):
-    plt.rcParams.update({'font.size': 16})
-    fig, ax = plt.subplots(figsize=(16, 10))
-    plt.subplots_adjust(top=0.85, right=0.915)
-    funnel_parms = {'lw': 0.0,
-                    'uw': 4.5,
-                    'sc': 2.5,
-                    'b': 1.0,
-                    'f': 0.15,
-                    'h': 1.5}
-    data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
-    data[2] = data[2]/4.184
-    cmax = np.amax(data[2][np.isfinite(data[2])])+1
-    data[2] = data[2]*4.184
-    cmap = graphics.two_cv_contour(data, labels, cmax, ax, funnel_parms)
-    # with open(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/COLVAR', 'r') as f:
-        # t = float(f.readlines()[-1].split()[0])/1000
-    # ax.set_title(f"{system}+{lig} (t = {t:.0f}ns)")
-    ax.set_xlabel(f"Funnel CV - Projection / {ANG}")
-    ax.set_ylabel(f"Funnel CV - Extension / {ANG}")
-    if basins is not None:
-        b1 = plt.Rectangle((basins[f'{lig}-bnd'][0]/10, basins[f'{lig}-bnd'][2]/10),
-                           (basins[f'{lig}-bnd'][1]/10 - basins[f'{lig}-bnd'][0]/10),
-                           basins[f'{lig}-bnd'][3]/10,
-                           ls='--', fc='none', ec='k', lw=2.0)
-        ax.add_patch(b1)
-        b2 = plt.Rectangle((basins['unbound'][0], basins['unbound'][2]),
-                        (basins['unbound'][1] - basins['unbound'][0]),
-                        basins['unbound'][3],
-                        ls='--', fc='none', ec='k', lw=2.0)
-        ax.add_patch(b2)
-
-    cax = plt.axes([0.98, 0.11, 0.01, 0.77])
-    cbar = plt.colorbar(cmap, cax=cax, aspect=10,
-                        ticks=np.arange(0., cmax, 2.0))
-    cbar.set_label('Free Energy (kcal/mol)')
-    fig.savefig(f'{SAVE_DIR}/FES/{system}+{lig}_{rep}_SOLO.png', dpi=450,
-                bbox_inches='tight')
-
 def fes_highlight2(system, lig, rep, CLR, basins=None,):
 
     funnel_parms = {'lw': 0.0,
@@ -362,6 +323,7 @@ def fes_highlight2(system, lig, rep, CLR, basins=None,):
                     'b': 1.0,
                     'f': 0.15,
                     'h': 1.5}
+
     data, labels = load.fes(f'{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/{system}+{lig}_FES', False)
     data[2] = data[2]/4.184
     cmax = np.amax(data[2][np.isfinite(data[2])])+1
@@ -383,21 +345,24 @@ def fes_highlight2(system, lig, rep, CLR, basins=None,):
     # format axes
     fig.update_xaxes(showline=True,
                         linecolor=CLR['ax'],
-                        title_text = f"Funnel CV - Projection / {ANG}",
+                        title_text = f"Funnel CV - Projection / nm",
                         linewidth=0.5,
+                        title_standoff = 20,
                         ticks='outside', minor_ticks='outside')
     fig.update_yaxes(showline=True,
                         linecolor=CLR['ax'],
-                        title_text = f"Funnel CV - Extension / {ANG}",
+                        title_text = f"Funnel CV - Extension / nm",
                         linewidth=0.5,
+                        title_standoff = 20,
                         ticks='outside', minor_ticks='outside')
 
     # format the rest of the figure
     fig.update_layout(height=1600, width=2200,
-                      title_text="RMSD for all systems",
+                      title_text="",
                       font=dict(color=CLR['ax'],
                                 family='Arial', size=32),
-                      plot_bgcolor='White',
+                      paper_bgcolor="rgba(0,0,0,0)",
+                      plot_bgcolor="rgba(0,0,0,0)",
                       showlegend=False)
 
     fig.add_shape(type="rect",
@@ -478,7 +443,7 @@ if __name__ == "__main__":
     i = 0
     for system in SYSTS:
         for lig in LIGS:
-            for rep in ['R'+str(x) for x in np.arange(3)+1]:
+            for rep in ['R'+str(x) for x in np.arange(2)+1]:
             # for rep in ['R1']:
                 # Define the working directory for each analysis
                 wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}"
