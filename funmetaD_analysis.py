@@ -382,7 +382,7 @@ def fes_highlight2(system, lig, rep, CLR, basins=None,):
                   line=dict(color=CLR['ax'], width=5))
 
     SAVE_DIR = '../Fun-metaD_Results/Plots_wReplicas'
-    fig.write_image(f"{SAVE_DIR}/{system}_{lig}_{rep}_soloFES.png", scale=2)
+    fig.write_image(f"{SAVE_DIR}/FES/New_Reps_Solo/{system}_{lig}_{rep}_soloFES.png", scale=2)
 
     # ax.set_xlabel(
     # ax.set_ylabel(
@@ -392,7 +392,7 @@ def fes_highlight2(system, lig, rep, CLR, basins=None,):
 
 
 
-def gismo_traj(wd, in_path, out_path, tpr='min.tpr', ndx='i.ndx'):
+def gismo_traj(wd, in_path, out_path, tpr='prod.tpr', ndx='i.ndx'):
     """ cutdown the trajectories using Gromacs trjconv ready for GISMO """
     # call gmx trjconv with -dt 100 to cut down the trajectory
     cmd = ("echo Backbone Protein_LIG | gmx_mpi trjconv "
@@ -432,6 +432,61 @@ def gismo_colvar(wd, in_colvar='COLVAR', out_colvar='COLVAR_GISMO'):
     print(f"Successfully converted {in_colvar} to {out_colvar}.")
 
 
+def snapshot_pdbs(directory, trj_path, top_path, snapshots, ref_str=None):
+    # Make the directory for the output
+    try:
+        subprocess.run(f"mkdir -p {directory}/snapshots/",
+                       shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    # Define the output name
+    stem = trj_path.split('/')[-1].split('.')[0]
+    if isinstance(snapshots[0], int):
+        for ts in snapshots:
+            try:
+                subprocess.run(('echo 0 | gmx_mpi trjconv '
+                                f"-f {trj_path} "
+                                f"-s {top_path} "
+                                f"-o {directory}/snapshots/{stem}_{ts}.pdb "
+                                f"-dump {ts*1000}"),
+                               shell=True, check=True)
+            except subprocess.CalledProcessError as error:
+                print('Error code:', error.returncode,
+                      '. Output:', error.output.decode("utf-8"))
+    elif isinstance(snapshots[0], list):
+        for snl in snapshots:
+            '''
+            file1.append(f"trajin {trj_path} {' '.join([str(i) for i in snl])}")
+            # Load reference structure (.top + .r)
+            if isinstance(ref_str, list):
+                file1.append(f"parm {ref_str[0]} [refparm]")
+                file1.append(f"reference {ref_str[1]} parm [refparm]")
+            # Load reference structure (.pdb)
+            else:
+                file1.append(f"reference {ref_str}")
+            file1.append('rms reference @CA,C,N,O')
+            file1.append(f"trajout {directory}/snapshots/{stem}.pdb multi keepext chainid A")
+            file1.append("go")
+            # Write all to cpptraj input file
+            with open(f"{directory}/sn{snl[0]}.in", 'w') as file:
+                file.writelines('\n'.join(file1))
+            # Run cpptraj using that input file
+            _run_cpptraj(directory, f"sn{snl[0]}.in")
+            ONLY NECESSARY IF KEEPEXT NOT FUNCTIONAL
+            for i in np.arange(len(snaps)):
+                print(i, snaps[i])
+                try:
+                    subprocess.run(' '.join(['mv',
+                                   f"{directory}/snapshots/{stem}.pdb.{i+1}",
+                                   f"{directory}/snapshots/{stem}_{snaps[i]/200:.0f}ns.pdb"]),
+                                   shell=True, check=True)
+                except subprocess.CalledProcessError as error:
+                    print('Error code:', error.returncode,
+                          '. Output:', error.output.decode("utf-8"))
+            '''
+
+
 if __name__ == "__main__":
 
     ligand_res_names = {'A769': 'MOL',
@@ -455,6 +510,7 @@ if __name__ == "__main__":
                 # Create a FES over time (every 250 ns)
                 run_sumhills(wd, f"{system}+{lig}", stride=125000)
                 '''
+
                 '''
                 # LIGAND & BACKBONE RMSD
                 new_data = tt.measure_rmsd(f"{wd}/md_dry.pdb",
@@ -504,19 +560,22 @@ if __name__ == "__main__":
                 new2 = new2.iloc[:, new2.columns.sortlevel(0, sort_remaining=True)[1]]
                 new2.to_hdf(f"{DATA_DIR}/ligand_rmsd.h5", key='df')
 
-                '''
-
                 ligand_atoms = {'A769': [43,44,45,46,47,48,49,52,58],
                                 'PF739': [43,44,46,48,50,51,52,53,55],
                                 'SC4': [38,39,40,41,42,43,44,45,46],
                                 'MT47': [21,23,25,26,27,28,29,36,37,39],
                                 'MK87': [24,25,26,27,28,29,30,31,32]}
-                ligand_core = f"{' or '.join([f'id {5900+x}' for x in ligand_atoms[lig]])}"
+                shift = -8 if system == 'a2b2' else 0
+                ligand_core = f"{' or '.join([f'id {5900+x+shift}' for x in ligand_atoms[lig]])}"
                 print(ligand_core)
+
                 # OTHER RMSD --> H5 FILE
-                to_measure = [ligand_core]
-                to_align = 'backbone'
-                out_name = 'Ligand_Core'
+                # to_measure = [ligand_core]
+                # to_align = 'backbone'
+                # out_name = 'Ligand_Core'
+                to_measure = ['backbone and resnum 273-365']
+                to_align = 'backbone and resnum 1-272'
+                out_name = 'Beta_AlphaAligned'
                 new_data = tt.measure_rmsd(f"{wd}/md_dry.pdb",
                                            f"{wd}/metad_{system}+{lig}_final.xtc",
                                            f"{wd}/md_dry.pdb",
@@ -524,8 +583,8 @@ if __name__ == "__main__":
                                            aln_group=to_align).run()
 
                 # measured RMSD:
-                inp2 = pd.DataFrame(columns=['t', rep],
-                                    data=new_data.results.rmsd[:, [1, 3]]).set_index('t')
+                inp2 = pd.DataFrame(columns=['t', rep+'-Alpha', rep+'-Beta'],
+                        data=new_data.results.rmsd[:, 1:]).set_index('t')
                 inp_l2 = pd.concat({lig: inp2}, axis=1)
                 inp_s2 = pd.concat({system: inp_l2}, axis=1)
 
@@ -547,7 +606,6 @@ if __name__ == "__main__":
                 new2 = new2.iloc[:, new2.columns.sortlevel(0, sort_remaining=True)[1]]
                 new2.to_hdf(f"{DATA_DIR}/{out_name}_rmsd.h5", key='df')
 
-                '''
                 new_strideplot(wd,
                             f"{system}+{lig}",
                             stride=250,
@@ -556,12 +614,10 @@ if __name__ == "__main__":
                                     'unbound': [3.5, 4.5, 0.0, 0.5]})
                 '''
 
-                '''
                 gismo_traj(wd, f"metad_{system}+{lig}_final.xtc",
                            f"{system}+{lig}_{rep}_GISMO.xtc")
                 gismo_colvar(wd,
                              out_colvar=f"{system}+{lig}_{rep}_GISMO.colvar")
-                '''
 
     '''
     fes_by_replica(basins={'bound': [0.0, 1.0, 0.0, 0.75], 'unbound': [3.5, 4.5, 0.0, 0.5]})

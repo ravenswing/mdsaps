@@ -15,6 +15,8 @@ from itertools import chain
 import numpy as np
 import parmed as pmd
 import pytraj as pt
+from traj_tools import format_pdb
+
 
 PREP_INPUTS = ('/home/rhys/phd_tools/simulation_files/'
                'submission_scripts/Local_Dirs/00-Prep')
@@ -325,15 +327,18 @@ def make_plumed(source_dat, ref_pdb, out_dat,
         source_dat: Path of template plumed.dat file
         ref_pdb:    Path to system pdb from prev. simulations
         out_dat:    Path to save the new plumed.dat file
-        ligID:      Residue number of the liganf in ref_pdb
+        ligID:      Residue number of the ligand in ref_pdb
         p0 & p1:    List of atom indices that define the funnel anchor points
     '''
     # Extract the atom numbers for input into plumed file...
     with open(ref_pdb, 'r') as f:
         pdb = f.readlines()
-    # Read in just atom number (1), res name (3) and res id (5)
+    # Read only lines containing Atom entries
     lines = [ln.split() for ln in pdb if 'ATOM' in ln]
-    lines = [[int(ln[1]), ln[3], int(ln[5])] for ln in lines]
+    # Filter for chain ID:
+    resID_col = 4 if lines[0][4].isdigit() else 5
+    # Read in just atom number (1), res name (3) and res id (5)
+    lines = [[int(ln[1]), ln[3], int(ln[resID_col])] for ln in lines]
     # Find those atoms that correspind to the ligand
     # ligID = 369 if 'a2b1' in ref_pdb else 368
     lig_atoms = [ln[0] for ln in lines if ln[2] == ligID]
@@ -364,8 +369,8 @@ def make_plumed(source_dat, ref_pdb, out_dat,
     # Ligand atoms
     LIGline = f"lig: COM ATOMS={ligN[0]}-{ligN[1]}"
     # Funnel anchor points
-    P_0line = f"\np0: COM ATOMS={p0[0]},{p0[1]}"
-    P_1line = f"\np1: COM ATOMS={p1[0]},{p1[1]}\n\n"
+    P_0line = f"\np0: COM ATOMS={','.join([str(x) for x in p0])}"
+    P_1line = f"\np1: COM ATOMS={','.join([str(x) for x in p1])}\n\n"
 
     # Write the new plumed.dat file...
     with open(source_dat, 'r') as f:
@@ -466,6 +471,62 @@ def make_readable_gro(gro_path, top_path, tpr=None, out_path=None,
     # Remove temp gro files if necessary
     if rm_gro:
         subprocess.run("rm /tmp/*.gro", shell=True)
+
+
+def assign_weights(pdb, ligand, out_pdb=None):
+    '''
+    Edit the final two columns of a .pdb to work with Plumed RMSD and
+    other metrics. Final two columns = occupancy and beta factor, but are
+    interpreted as alignment weights and displacement measurements weights.
+
+    For ligand RMSD, sets ligand values to 0 and 1 respectively,
+    but all proteins atoms to 1 and 0.
+    '''
+    with open(pdb, 'r') as f:
+        lines = f.readlines()
+    print(f'Loaded {pdb}')
+
+    # Search for chain ID
+    chain = not [l for l in lines if 'ATOM' in l][0].split()[4].isdigit()
+    if chain:
+        print('INFO: chain ID detected in pdb')
+
+#     rem = 0
+#     while lines[0][-1] not in ['1.00', '0.00']:
+#         lines = [l[:-2] for l in lines]
+#         rem += 1
+#     print(f'Removed {rem} columns from input pdb.')
+
+    for i in np.arange(len(lines)):
+        if any(x in lines[i] for x in ['END']):
+            continue
+        if any(x in lines[i] for x in ['REMARK', 'TITLE', 'TER',
+                                       'CRYST', 'MODEL', 'WAT']):
+            lines[i] = 'DELETORiOUS'
+        else:
+            l = lines[i].split()
+            #print(l)
+            if l[3] == ligand:
+                if l[-1] == 'H':
+                    l[0] = 'DELETORiOUS'
+                else:
+                    l[-3] = '0.00'
+                    l[-2] = '1.00'
+            elif any(x == l[2] for x in ['C', 'O', 'N', 'CA']):
+                l[-3] = '1.00'
+                l[-2] = '0.00'
+            else:
+                    l[0] = 'DELETORiOUS'
+
+            #lines[i] = f'{l[0]:6}{l[1]:>5} {l[2]:^4} {l[3]:3} {l[4]} {l[5]:>3}    {l[6]:>8}{l[7]:>8}{l[8]:>8}{l[9]:>6}{l[10]:>6}\n'
+            lines[i] = format_pdb(l, chain=chain)
+
+    out_file = pdb[:-4]+'_weights.pdb' if not out_pdb else out_pdb
+    print(f"WRITING  {out_file}")
+    with open(out_file, 'w') as f:
+        f.writelines([l for l in lines if 'DELETORiOUS' not in l])
+
+
 
 
 if __name__ == "__main__":

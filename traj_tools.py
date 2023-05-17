@@ -35,24 +35,27 @@ def _process_atm_nm(name):
         return f" {name:<3}"
 
 
-def format_pdb(info):
+def format_pdb(info, chain=False):
     # Process atom name seperately
     atm_nm = _process_atm_nm(info[2])
+
+    # Add chain
+    c = 1 if chain else 0
 
     # Assign values for each column
     record = info[0]  # Record name
     atm_id = info[1]  # Atom serial number
     alt_li = ' '  # Alternate location indicator
     res_nm = info[3]  # Residue name.
-    chn_id = ' '  # Chain ID
-    res_id = info[4]  # Residue sequence number
+    chn_id = ' ' if not chain else info[4]  # Chain ID
+    res_id = info[4 + c]  # Residue sequence number
     i_code = ' '   # Code for insertion
-    coords = [float(info[5]),  # x (A)
-              float(info[6]),  # y (A)
-              float(info[7])]  # z (A)
-    occupn = float(info[8])  # Occupancy
-    temprt = float(info[9])  # Temperature
-    elemnt = info[10]  # Element
+    coords = [float(info[5 + c]),  # x (A)
+              float(info[6 + c]),  # y (A)
+              float(info[7 + c])]  # z (A)
+    occupn = float(info[8 + c])  # Occupancy
+    temprt = float(info[9 + c])  # Temperature
+    elemnt = info[10 + c]  # Element
     charge = '  '  # Charge
 
     # Format the new line using all the values
