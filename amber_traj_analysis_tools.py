@@ -215,7 +215,7 @@ def amber_rmsd(trj_path, top_path, ref_str, rmsd_mask,
     return data
 
 
-def measure_rmsf(trj_path, top_path, ref_str, rmsf_mask, aln_mask='@CA,C,N,O'):
+def amber_rmsf(trj_path, top_path, ref_str, rmsf_mask, aln_mask='@CA,C,N,O'):
     # Load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # Load ref. structure if path is given
