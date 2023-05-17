@@ -1,3 +1,9 @@
+"""
+===============================================================================
+                    OPENMM PROJECT SPECIFIC ANALYSIS
+===============================================================================
+ 
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -5,12 +11,6 @@ import pickle
 from glob import glob
 import scipy.stats
 import subprocess
-import sys
-
-sys.path.append('/home/rhys/phd_tools/python_scripts')
-import graphics
-import load_data as load
-
 import MDAnalysis as mda
 from MDAnalysis.analysis import rms
 
@@ -19,7 +19,7 @@ STEM = '/media/rhys/Storage/jctc2_rhys_2022'
 DATA_DIR = f"{STEM}/gpfs_data"
 NWDA_DIR = f"{STEM}/New_data/funnel_fragment_paper"
 FIGS_DIR = f"{STEM}/Figures"
-DRBX_DIR = f"/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2"
+DRBX_DIR = "/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_JCTC2"
 
 # Experimental Values
 EXP_VALS = {'3U5J': -7.65, '3U5L': -8.45, '4HBV': -6.33, '4LR6': -6.11,
@@ -97,28 +97,6 @@ def identify_recross(data, metric, bound, unbound):
     N = int((len(rx)-1))
     # output number of RX and list of RX times
     return N, rx
-
-
-def calc_rmsd():
-    # THIS WILL NOT WORK!!!!! DON´T RUN!
-    # NEED TO APPLY PREVIOUS CHANGES
-
-    for method in ['fun-metaD', 'fun-RMSD']:
-        for system in SYSTEMS.keys():
-            for pdb in SYSTEMS[system]:
-                for i in range(3):
-                    solute_pdb = (f'{DATA_DIR}/{method}/{system}/{i}_output/'
-                                  f'{pdb}/{filenames[method][0]}')
-                    solute_traj = (f'{DATA_DIR}/{method}/{system}/{i}_output/'
-                                   f'{pdb}/{filenames[method][1]}')
-                    u = mda.Universe(solute_pdb, solute_traj)
-                    r = rms.RMSD(u, select='backbone',
-                                 groupselections=['resname MOL and not name H*'],
-                                 ref_frame=0).run()
-                    lig_rmsd = r.results.rmsd[:, -1]
-                    cache_file = f'{RMSD_DIR}/{method}/{system}/{pdb}_{i}.p'
-                    with open(cache_file, 'wb') as f:
-                        pickle.dump(lig_rmsd, f)
 
 
 def find_rx():
