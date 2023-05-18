@@ -192,9 +192,9 @@ def dump_rmsd(top_path, trj_path, ref_str, out_path=None,
 
 
 def calculate_rmsd(DIVS, top_frmt, trj_frmt, hdf_path, measure,
-                   ref_frmt=None, align='backbone'):
-
-    for i, p in enumerate(product(*DIVS)):
+                   ref_frmt=None, align='backbone', unique_ligs=False):
+    all_sys = DIVS if unique_ligs else product(*DIVS)
+    for i, p in enumerate(all_sys):
         p = list(p)
 
         print(p)
@@ -211,14 +211,14 @@ def calculate_rmsd(DIVS, top_frmt, trj_frmt, hdf_path, measure,
                                 ref.format(p=p),
                                 [measure],
                                 aln_group=align).run()
-        if len(DIVS) == 3:
+        if len(all_sys[0]) == 3:
 
             inp = pd.DataFrame(columns=['t', p[2]],
                     data=new_data.results.rmsd[:, [1, -1]]).set_index('t')
             inp_l = pd.concat({p[1]: inp}, axis=1)
             inp_s = pd.concat({p[0]: inp_l}, axis=1)
 
-        elif len(DIVS) == 2:
+        elif len(all_sys[0]) == 2:
             inp = pd.DataFrame(columns=['t', p[1]],
                     data=new_data.results.rmsd[:, [1, -1]]).set_index('t')
             inp_s = pd.concat({p[0]: inp}, axis=1)
