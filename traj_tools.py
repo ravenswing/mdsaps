@@ -294,7 +294,21 @@ def calculate_rgyr(DIVS, top_frmt, trj_frmt, hdf_path, measure='protein'):
         new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
         new.to_hdf(hdf_path, key='df')
 
-'''
-def simple_table(hdf_path):
 
-'''
+def simple_avg_table(hdf_path, csv=None):
+    df = pd.read_hdf(hdf_path, key='df')
+    df.columns = df.columns.map(','.join)
+    out_list = []
+    for col, data in df.items():
+        line = [col,
+                f"{data.mean():.4f}",
+                f"{data.std():.4f}"]
+        line = ','.join(line)
+        out_list.append(line)
+    if csv:
+        print(f"Saved to file {csv}")
+        with open(csv, 'w') as f:
+            f.writelines([ln + '\n' for ln in out_list])
+    else:
+        for ln in out_list:
+            print(ln)
