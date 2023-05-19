@@ -225,7 +225,7 @@ def diffusion(DIVS, path_frmt, save_frmt, shape, cvs):
         plt.subplots_adjust(top=0.94)
         for i, p in enumerate(DIVS):
             colvar = load.colvar(path_frmt.format(p=p))
-            ax[i].plot(colvar.time.multiply(0.001), colvar[cv].multiply(10))
+            ax[i].scatter(colvar.time.multiply(0.001), colvar[cv].multiply(10))
             ax[i].set_title(' '.join(p))
             ax[i].set_xlabel("Simulation Time / ns")
             ax[i].set_ylabel(' / '.join(cvs[cv]))

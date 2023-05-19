@@ -293,3 +293,8 @@ def calculate_rgyr(DIVS, top_frmt, trj_frmt, hdf_path, measure='protein'):
         # reorder columns
         new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
         new.to_hdf(hdf_path, key='df')
+
+'''
+def simple_table(hdf_path):
+
+'''
