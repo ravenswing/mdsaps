@@ -20,10 +20,10 @@ sys.path.append('/home/rhys/phd_tools/python_scripts')
 import load_data as load
 
 
-import graphics
+
 
 sys.path.append('/home/rhys/phd_tools/SAPS')
-import traj_tools as tt
+
 
 ANG = "\u212B"
 
@@ -40,6 +40,7 @@ CLR = {'ax': 'rgb(69, 69, 69)',
 
 
 def fes_individual(fes_path, save_path, basins=None, funnel=None,
+                   basin_lables=None, xlims=None, ylims=None,
                    labels=['CV1', 'CV2']):
     '''
     funnel_parms = {'lw': 0.0,
@@ -72,11 +73,13 @@ def fes_individual(fes_path, save_path, basins=None, funnel=None,
                      title_text=labels[0],
                      linewidth=0.5,
                      title_standoff=20,
+                     dtick=0.5,
                      ticks='outside', minor_ticks='outside')
     fig.update_yaxes(showline=True,
                      linecolor=CLR['ax'],
                      title_text=labels[1],
                      linewidth=0.5,
+                     dtick=0.2,
                      title_standoff=20,
                      ticks='outside', minor_ticks='outside')
 
@@ -88,16 +91,30 @@ def fes_individual(fes_path, save_path, basins=None, funnel=None,
                       paper_bgcolor="rgba(0,0,0,0)",
                       plot_bgcolor="rgba(0,0,0,0)",
                       showlegend=False)
+    if xlims:
+        fig.update_layout(xaxis_range=xlims)
+    if ylims:
+        fig.update_layout(yaxis_range=ylims)
 
     if basins:
-        for b in basins:
-            fig.add_shape(type="rect",
-                          x0=b[0]/10,
-                          x1=b[1]/10,
-                          y0=b[2]/10,
-                          y1=b[3]/10,
-                          line_dash='dash',
-                          line=dict(color=CLR['ax'], width=5))
+        for i, b in enumerate(basins):
+            if basin_lables is None:
+                fig.add_shape(type="rect",
+                              x0=b[0],
+                              x1=b[1],
+                              y0=b[2],
+                              y1=b[3],
+                              line_dash='dash',
+                              line=dict(color=CLR['ax'], width=5))
+            else:
+                fig.add_shape(type="rect",
+                              x0=b[0],
+                              x1=b[1],
+                              y0=b[2],
+                              y1=b[3],
+                              line_dash='dash',
+                              label=dict(text=str(i), font=dict(size=64)),
+                              line=dict(color=CLR['ax'], width=5))
 
     fig.write_image(save_path, scale=2)
 
