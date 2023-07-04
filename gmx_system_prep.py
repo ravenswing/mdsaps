@@ -321,14 +321,15 @@ def next_step(ndir):
 
 
 def make_plumed(source_dat, ref_pdb, out_dat,
-                ligID, p0, p1):
+                ligID, p0, p1, wrap_centre=None):
     '''
     INPUTS:
-        source_dat: Path of template plumed.dat file
-        ref_pdb:    Path to system pdb from prev. simulations
-        out_dat:    Path to save the new plumed.dat file
-        ligID:      Residue number of the ligand in ref_pdb
-        p0 & p1:    List of atom indices that define the funnel anchor points
+        source_dat:  Path of template plumed.dat file
+        ref_pdb:     Path to system pdb from prev. simulations
+        out_dat:     Path to save the new plumed.dat file
+        ligID:       Residue number of the ligand in ref_pdb
+        p0 & p1:     List of atom indices that define the funnel anchor points
+        wrap_centre: The atom id for the
     '''
     # Extract the atom numbers for input into plumed file...
     with open(ref_pdb, 'r') as f:
@@ -362,21 +363,33 @@ def make_plumed(source_dat, ref_pdb, out_dat,
     header3 = ('\n\n\n##########################\n'
                '#   DEFINITION_OF_COMs   #\n'
                '##########################\n')
-
     # WholeMolecules line that seperates ligand and protein into 2 entities
-    WHMline = (f"WHOLEMOLECULES STRIDE=1 ENTITY0={protN[0]}-{protN[1]} "
-               f"ENTITY1={ligN[0]}-{ligN[1]}")
-    # Ligand atoms
-    LIGline = f"lig: COM ATOMS={ligN[0]}-{ligN[1]}"
+    WHMline = ('\nWHOLEMOLECULES STRIDE=1 ENTITY0=protein ENTITY1=ligand\n')
+    # Ligand Centre of Mass
+    LIGline = 'lig: COM ATOMS=ligand'
+
+    # Define protein atoms
+    protein = (f"\nprotein: GROUP ATOMS={protN[0]}-{protN[1]}\n")
+    # Define ligand atoms
+    ligand = (f"ligand: GROUP ATOMS={ligN[0]}-{ligN[1]}\n")
+
     # Funnel anchor points
     P_0line = f"\np0: COM ATOMS={','.join([str(x) for x in p0])}"
     P_1line = f"\np1: COM ATOMS={','.join([str(x) for x in p1])}\n\n"
 
-    # Write the new plumed.dat file...
+    # Load the template plumed.dat file...
     with open(source_dat, 'r') as f:
         lines = f.readlines()
-    lines[:0] = [header1, restart, header2, WHMline,
-                 header3, LIGline, P_0line, P_1line]
+    if wrap_centre:
+        MOLINFO = f"MOLINFO STRUCTURE=./{ref_pdb.split('/')[-1]}\n"
+        WRAPline = (f"\nWRAPAROUND ATOMS=ligand AROUND={wrap_centre} "
+                    f"GROUPBY={ligN[1]-ligN[0]+1}")
+        lines[:0] =  [header1, restart, header2, MOLINFO, protein, ligand,
+                      WHMline, WRAPline, header3, LIGline, P_0line, P_1line]
+    else:
+        lines[:0] = [header1, restart, header2, protein, ligand,
+                    WHMline, header3, LIGline, P_0line, P_1line]
+    # Write the new plumed.dat file...
     with open(out_dat, 'w+') as f:
         f.writelines(lines)
 
