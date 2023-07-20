@@ -341,8 +341,10 @@ def make_plumed(source_dat, ref_pdb, out_dat,
     # Read in just atom number (1), res name (3) and res id (5)
     lines = [[int(ln[1]), ln[3], int(ln[resID_col])] for ln in lines]
     # Find those atoms that correspind to the ligand
+    #   N.B. solvent IDs can loop from 9999 to 0, so have to also filter out
+    #   any water lines!
     # ligID = 369 if 'a2b1' in ref_pdb else 368
-    lig_atoms = [ln[0] for ln in lines if ln[2] == ligID]
+    lig_atoms = [ln[0] for ln in lines if ln[2] == ligID and 'WAT' not in ln]
     # Set extent of ligand
     ligN = [min(lig_atoms), max(lig_atoms)]
     # Set extent of protein (assuming from 1 to ligand)
@@ -499,7 +501,7 @@ def assign_weights(pdb, ligand, out_pdb=None):
         lines = f.readlines()
     print(f'Loaded {pdb}')
 
-    # Search for chain ID
+    # Search for chain ID column in input pdb 
     chain = not [l for l in lines if 'ATOM' in l][0].split()[4].isdigit()
     if chain:
         print('INFO: chain ID detected in pdb')
@@ -511,8 +513,10 @@ def assign_weights(pdb, ligand, out_pdb=None):
 #     print(f'Removed {rem} columns from input pdb.')
 
     for i in np.arange(len(lines)):
+        # Discount END lines
         if any(x in lines[i] for x in ['END']):
             continue
+        # Remove comment and solvent lines
         if any(x in lines[i] for x in ['REMARK', 'TITLE', 'TER',
                                        'CRYST', 'MODEL', 'WAT']):
             lines[i] = 'DELETORiOUS'

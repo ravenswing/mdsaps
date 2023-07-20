@@ -48,40 +48,44 @@ def save_centroid(traj, per_frame, out_name):
 
 
 if __name__ == "__main__":
-
+    """
     # Define all the systems to work with
     #SYSTS = ['a2b1', 'a2b2']
     #LIGS = ['A769', 'PF739', 'SC4', 'MT47', 'MK87']
-    REPS = ['R'+str(x) for x in np.arange(2)+1]
+    #REPS = ['R'+str(x) for x in np.arange(2)+1]
 
-    SYSTS = ['a2b2']
-    LIGS = ['A769', 'PF739', 'SC4',]
-    #REPS = ['R2']
     # Define the source and output directories
     DATA_DIR = '/media/rhys/Storage/ampk_metad_all_data'
     OUT_DIR = '/home/rhys/Clustering/'
+    """
+    SYSTS = ['brd4']
+    LIGS = ['3u5l', '4hbv', '4meq', '4uyd']
+    REPS = ['R'+str(x) for x in np.arange(2)+1]
+
+    # Define the source and output directories
+    DATA_DIR = '/media/rhys/Storage2/jctc2/data/fun-metaD'
 
     # Extract basin information from .csv file
-    basins = import_basins(f"{OUT_DIR}/basins.csv")
+    basins = import_basins(f"{DATA_DIR}/basins.csv")
 
     for system in SYSTS:
         for lig in LIGS:
-            subprocess.run(f"mkdir -p {OUT_DIR}/mdtraj/{lig}/", shell=True)
-            with open(f"{OUT_DIR}/mdtraj/{lig}/cluster_stats.csv", 'w') as f:
+            #subprocess.run(f"mkdir -p {DATA_DIR}//{lig}/", shell=True)
+            with open(f"{DATA_DIR}/{system}_{lig}/cluster_stats.csv", 'w') as f:
                 f.write(('system,lig,basin,n_frames,centroid_index,max_simil,'
                          'matrix_rmsd_avg,martix_rmsd_std'))
             for rep in REPS:
-                wd = f"{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}"
+                wd = f"{DATA_DIR}/{system}_{lig}/{rep}"
                 # Load the trajectory
-                traj = md.load(f'{wd}/{system}+{lig}_{rep}_GISMO.xtc',
+                traj = md.load(f'{wd}/{system}_{lig}_{rep}_GISMO.xtc',
                                top=f'{wd}/md_dry.pdb')
                 # Slice heavy atoms
                 atom_ids = [a.index for a in traj.topology.atoms
                             if a.element.symbol != 'H']
                 # Load in the COLVAR file
-                clv = colvar(f'{wd}/{system}+{lig}_{rep}_GISMO.colvar').drop([1]).reset_index(drop=True)
+                clv = colvar(f'{wd}/{system}_{lig}_{rep}_GISMO.colvar').drop([1]).reset_index(drop=True)
                 # Loop over all basins for current system
-                for i, b in enumerate(basins[f"{system}+{lig}"]):
+                for i, b in enumerate(basins[f"{system}_{lig}"]):
                     # Extract indices from COLVAR
                     indices = clv.loc[(clv['pp.proj'].between(b[0], b[1]))
                                       & (clv['pp.ext'].between(b[2], b[3]))].index.values
@@ -94,8 +98,8 @@ if __name__ == "__main__":
                                  atoms=atom_ids)
                     # Cluster and save centroid using MDTraj
                     d = save_centroid(b_frames, pf,
-                                      (f"{OUT_DIR}/mdtraj/{lig}/"
-                                       f"{system}+{lig}_{rep}_b{i}.pdb"))
+                                      (f"{wd}/"
+                                       f"{system}_{lig}_{rep}_b{i}.pdb"))
                     d = [system, lig, i, len(indices)] + d
-                    with open(f"{OUT_DIR}/mdtraj/{lig}/cluster_stats.csv", 'a') as f:
+                    with open(f"{DATA_DIR}/{system}_{lig}/cluster_stats.csv", 'a') as f:
                         f.write('\n'+','.join([str(x) for x in d]))

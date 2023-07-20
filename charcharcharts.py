@@ -19,9 +19,6 @@ from plotly.subplots import make_subplots
 sys.path.append('/home/rhys/phd_tools/python_scripts')
 import load_data as load
 
-
-
-
 sys.path.append('/home/rhys/phd_tools/SAPS')
 
 
@@ -180,15 +177,16 @@ def multiplot(hdf_path, DIVS, save_frmt, title_frmt,
                 if labels and j == 0:
                     ax[i, j].set_ylabel(labels[1])
         fig.savefig(save_frmt.format(plot), dpi=450, bbox_inches='tight')
+        plt.close()
 
 
 def all_columns(hdf_path, save_frmt, title='Highlight:',
-                labels=None, xlims=None, ylims=None, average=False):
+                labels=None, xlims=None, ylims=None, hline=False):
 
     df = pd.read_hdf(hdf_path, key='df')
     df.columns = df.columns.map('_'.join)
     for col, data in df.items():
-        fig, ax = plt.subplots(figsize=(16, 9))
+        fig, ax = plt.subplots(figsize=(12, 6.75))
         mean = data.rolling(1000, center=True).mean()
         stdev = data.rolling(1000, center=True).std()
 
@@ -200,9 +198,13 @@ def all_columns(hdf_path, save_frmt, title='Highlight:',
         ax.plot(df.index*0.001, mean, c=CLR, lw=0.8)
         ax.fill_between(df.index*0.001, upr.values, lwr.values, alpha=0.2)
 
-        if average:
-            ax.axhline(y=data.mean(),
-                       c='k', alpha=0.5, lw=1.5, ls='--')
+        if hline:
+            if hline == 'average':
+                ax.axhline(y=data.mean(),
+                           c='k', alpha=0.5, lw=1.5, ls='--')
+            else:
+                ax.axhline(y=hline,
+                           c='k', alpha=0.5, lw=1.5, ls='--')
         if xlims:
             ax.set_xlim(xlims)
         if ylims:
@@ -212,6 +214,7 @@ def all_columns(hdf_path, save_frmt, title='Highlight:',
             ax.set_ylabel(labels[1])
         ax.set_title(f"{title} {' '.join(col.split('_'))}")
         fig.savefig(save_frmt.format(col), dpi=450, bbox_inches='tight')
+        plt.close()
 
 
 def hills(DIVS, path_frmt, save_name, shape):
@@ -229,6 +232,7 @@ def hills(DIVS, path_frmt, save_name, shape):
         ax[i].set_xlabel("Simulation Time / ns")
         ax[i].set_ylabel('Hills Heights')
     fig.savefig(save_name, dpi=300, bbox_inches='tight')
+    plt.close()
 
 
 def diffusion(DIVS, path_frmt, save_frmt, shape, cvs):
@@ -247,3 +251,4 @@ def diffusion(DIVS, path_frmt, save_frmt, shape, cvs):
             ax[i].set_xlabel("Simulation Time / ns")
             ax[i].set_ylabel(' / '.join(cvs[cv]))
         fig.savefig(save_frmt.format(cvs[cv][0]), dpi=300, bbox_inches='tight')
+        plt.close()
