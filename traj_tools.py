@@ -14,6 +14,7 @@ from MDAnalysis.analysis import rms
 import pickle
 from itertools import product
 import pandas as pd
+from os.path import exists
 
 ANG = "\u212B"
 
@@ -223,24 +224,30 @@ def calculate_rmsd(DIVS, top_frmt, trj_frmt, hdf_path, measure,
                     data=new_data.results.rmsd[:, [1, -1]]).set_index('t')
             inp_s = pd.concat({p[0]: inp}, axis=1)
 
-        if i == 0:
+        # If there is already an hdf file
+        if exists(hdf_path):
+            print('Further time --> Reading Files & Adding Data')
+            new = pd.read_hdf(hdf_path, key='df')
+            # Update the values if the data already exists
+            if any([(mi == inp_s.columns)[0] for mi in new.columns]):
+                print("Updating values in DataFrame.")
+                new.update(inp_s)
+            # Or add the new data
+            else:
+                print("Adding new values to DataFrame.")
+                new = new.join(inp_s)
+            # Reorder the columns before saving the data 
+            new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
+            # Write the new data to the existing file
+            new.to_hdf(hdf_path, key='df')
+
+        # Or create one
+        else:
+            # Make a new hdf file and save the first column of data
             print('First time --> Creating Files')
             inp_s.to_hdf(hdf_path, key='df')
-
             i += 1
             continue
-        print('Further time --> Reading Files & Adding Data')
-        new = pd.read_hdf(hdf_path, key='df')
-
-        if any([(mi == inp_s.columns)[0] for mi in new.columns]):
-            print("Updating values in DataFrame.")
-            new.update(inp_s)
-        else:
-            print("Adding new values to DataFrame.")
-            new = new.join(inp_s)
-        # reorder columns
-        new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
-        new.to_hdf(hdf_path, key='df')
 
 
 def measure_rgyr(top_path, trj_path, selection):
@@ -275,24 +282,30 @@ def calculate_rgyr(DIVS, top_frmt, trj_frmt, hdf_path, measure='protein'):
                     data=new_data.results.rmsd[:, [1, -1]]).set_index('t')
             inp_s = pd.concat({p[0]: inp}, axis=1)
 
-        if i == 0:
+        # If there is already an hdf file
+        if exists(hdf_path):
+            print('Further time --> Reading Files & Adding Data')
+            new = pd.read_hdf(hdf_path, key='df')
+            # Update the values if the data already exists
+            if any([(mi == inp_s.columns)[0] for mi in new.columns]):
+                print("Updating values in DataFrame.")
+                new.update(inp_s)
+            # Or add the new data
+            else:
+                print("Adding new values to DataFrame.")
+                new = new.join(inp_s)
+            # Reorder the columns before saving the data 
+            new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
+            # Write the new data to the existing file
+            new.to_hdf(hdf_path, key='df')
+
+        # Or create one
+        else:
+            # Make a new hdf file and save the first column of data
             print('First time --> Creating Files')
             inp_s.to_hdf(hdf_path, key='df')
-
             i += 1
             continue
-        print('Further time --> Reading Files & Adding Data')
-        new = pd.read_hdf(hdf_path, key='df')
-
-        if any([(mi == inp_s.columns)[0] for mi in new.columns]):
-            print("Updating values in DataFrame.")
-            new.update(inp_s)
-        else:
-            print("Adding new values to DataFrame.")
-            new = new.join(inp_s)
-        # reorder columns
-        new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
-        new.to_hdf(hdf_path, key='df')
 
 
 def simple_avg_table(hdf_path, csv=None):
@@ -312,3 +325,18 @@ def simple_avg_table(hdf_path, csv=None):
     else:
         for ln in out_list:
             print(ln)
+
+
+def comb_mean_std(N, X, S):
+    # the mean of total group is : (n1*X1+n2*X2)/(n1+n2)
+    # the variance of total group is : n1*(S1^2+d1^2)+n2*(S22+d22)/(n1+n2)
+    # where  d1 = X1-mean of total group
+
+    comb_mean = np.multiply(N, X).sum()/N.sum()
+    var = np.square(S)
+    div2 = np.square(np.subtract(X, comb_mean))
+    temp = np.add(var, div2)
+    temp = np.multiply(temp, N)
+    comb_std = np.sqrt(temp.sum()/N.sum())
+
+    return comb_mean, comb_std

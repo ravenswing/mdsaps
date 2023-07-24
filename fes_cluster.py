@@ -60,7 +60,9 @@ if __name__ == "__main__":
     """
     SYSTS = ['brd4']
     LIGS = ['3u5l', '4hbv', '4meq', '4uyd']
-    REPS = ['R'+str(x) for x in np.arange(2)+1]
+    #REPS = ['R'+str(x) for x in np.arange(2)+1]
+    REPS = ['R3']
+    
 
     # Define the source and output directories
     DATA_DIR = '/media/rhys/Storage2/jctc2/data/fun-metaD'
