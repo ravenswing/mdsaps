@@ -29,7 +29,7 @@ import traj_tools as tt
 def run_sumhills(wd, out_name, stride=None):
     if stride is not None:
         out_name = f'fes/{out_name}'
-        subprocess.run(f"mkdir {wd}/fes", shell=True, check=True)
+        subprocess.run(f"mkdir -p {wd}/fes", shell=True, check=True)
     cmd = (f"plumed sum_hills --hills {wd}/HILLS "
            f"--outfile {wd}/{out_name}_FES --mintozero")
     if stride is not None:

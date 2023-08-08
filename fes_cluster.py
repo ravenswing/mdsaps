@@ -5,7 +5,6 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 from time import time
-import subprocess
 import sys
 
 sys.path.append('/home/rhys/phd_tools/python_scripts/')
@@ -58,10 +57,12 @@ if __name__ == "__main__":
     DATA_DIR = '/media/rhys/Storage/ampk_metad_all_data'
     OUT_DIR = '/home/rhys/Clustering/'
     """
-    SYSTS = ['brd4']
-    LIGS = ['3u5l', '4hbv', '4meq', '4uyd']
+    #SYSTS = ['brd4']
+    #LIGS = ['3u5l', '4hbv', '4meq', '4uyd']
+    SYSTS = ['hsp90']
+    LIGS = ['2wi3', '2yk9', '3eko', '3ow6']
     #REPS = ['R'+str(x) for x in np.arange(2)+1]
-    REPS = ['R3']
+    REPS = ['R2']
     
 
     # Define the source and output directories
