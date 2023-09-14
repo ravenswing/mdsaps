@@ -173,6 +173,24 @@ def measure_rmsd(top_path, trj_path, ref_str, rmsd_groups,
     return R
 
 
+def measure_rmsf(top_path, trj_path, ref_str, rmsd_groups,
+                 aln_group='backbone'):
+    # Load the topology and trajectory
+    U = _init_universe([top_path, trj_path])
+    if ref_str:
+        # Load ref. structure if path is given
+        ref = _init_universe(ref_str)
+    else:
+        # If ref_str = 0 i.e. use starting frame, assign ref as input traj.
+        ref = U
+    R = rms.RMSF(U,  # universe to align
+                 ref,  # reference universe or atomgroup
+                 select=aln_group,  # group to superimpose and calculate RMSD
+                 groupselections=rmsd_groups,  # groups for RMSD
+                 ref_frame=0).run()  # frame index of the reference
+    return R
+
+
 def dump_rmsd(top_path, trj_path, ref_str, out_path=None,
               align='backbone', measure=['backbone']):
 
