@@ -533,9 +533,9 @@ def assign_weights(pdb, ligand, out_pdb=None):
                 l[-3] = '1.00'
                 l[-2] = '0.00'
             else:
-                    l[0] = 'DELETORiOUS'
+                l[0] = 'DELETORiOUS'
 
-            #lines[i] = f'{l[0]:6}{l[1]:>5} {l[2]:^4} {l[3]:3} {l[4]} {l[5]:>3}    {l[6]:>8}{l[7]:>8}{l[8]:>8}{l[9]:>6}{l[10]:>6}\n'
+            #lines[i] = f'{l[0]:6}{l[1]:>5} {l[2]:^4} {l[3]:3} {l[4]} {l[5]:>3}    {l[6]:>8}{l[7]:>8}{l[8]:>8}{l[9]:>6}{l[10]:>6}\n' 
             lines[i] = format_pdb(l, chain=chain)
 
     out_file = pdb[:-4]+'_weights.pdb' if not out_pdb else out_pdb
@@ -544,6 +544,44 @@ def assign_weights(pdb, ligand, out_pdb=None):
         f.writelines([l for l in lines if 'DELETORiOUS' not in l])
 
 
+def bb_weights(pdb, ligand, out_pdb=None):
+    '''
+    '''
+    with open(pdb, 'r') as f:
+        lines = f.readlines()
+    print(f'Loaded {pdb}')
+
+    # Search for chain ID column in input pdb 
+    chain = not [l for l in lines if 'ATOM' in l][0].split()[4].isdigit()
+    if chain:
+        print('INFO: chain ID detected in pdb')
+
+    for i in np.arange(len(lines)):
+        # Discount END lines
+        if any(x in lines[i] for x in ['END']):
+            continue
+        # Remove comment and solvent lines
+        if any(x in lines[i] for x in ['REMARK', 'TITLE', 'TER',
+                                       'CRYST', 'MODEL', 'WAT']):
+            lines[i] = 'DELETORiOUS'
+        else:
+            l = lines[i].split()
+            # also remove ligand
+            if l[3] == ligand:
+                l[0] = 'DELETORiOUS'
+            # set backbone atoms to align and measure
+            elif any(x == l[2] for x in ['C', 'O', 'N', 'CA']):
+                l[-3] = '1.00'
+                l[-2] = '1.00'
+            else:
+                l[0] = 'DELETORiOUS'
+            # format output
+            lines[i] = format_pdb(l, chain=chain)
+
+    out_file = pdb[:-4]+'_bb.pdb' if not out_pdb else out_pdb
+    print(f"WRITING  {out_file}")
+    with open(out_file, 'w') as f:
+        f.writelines([l for l in lines if 'DELETORiOUS' not in l])
 
 
 if __name__ == "__main__":
