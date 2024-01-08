@@ -216,18 +216,22 @@ def calculate_rmsd(DIVS, top_frmt, trj_frmt, hdf_path, measure,
     for i, p in enumerate(all_sys):
         p = list(p)
 
-        print(p)
-        print(top_frmt.format(p=p))
-        print(trj_frmt.format(p=p))
+        print(f"Processing: {' '.join(p)}")
 
-        ref = ref_frmt if ref_frmt else top_frmt
+        if ref_frmt is not None:
+            if isinstance(ref_frmt, int):
+                ref = ref_frmt
+            else:
+                ref = ref_frmt.format(p=p)
+        else:
+            ref = top_frmt.format(p=p)
 
-        print(ref)
+        print(f"Using Ref.: {ref} ({type(ref)})")
 
         # LIGAND & BACKBONE RMSD
         new_data = measure_rmsd(top_frmt.format(p=p),
                                 trj_frmt.format(p=p),
-                                ref.format(p=p),
+                                ref,
                                 [measure],
                                 aln_group=align).run()
         if len(all_sys[0]) == 3:

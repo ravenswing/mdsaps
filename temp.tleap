@@ -1,7 +1,0 @@
-source leaprc.gaff
-loadamberparams /home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms/MK87.frcmod
-loadamberprep /home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms/MK87.prep
-struc = loadpdb /home/rhys/Storage/ampk_metad_all_data/a2b2+MK87/00-Prep/MK87_4_a2b2_4_gmx.pdb
-saveamberparm struc /home/rhys/Storage/ampk_metad_all_data/a2b2+MK87/00-Prep/MK87_amb.top /home/rhys/Storage/ampk_metad_all_data/a2b2+MK87/00-Prep/MK87_amb.crd
-savepdb struc /home/rhys/Storage/ampk_metad_all_data/a2b2+MK87/00-Prep/MK87_leap.pdb
-quit

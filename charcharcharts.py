@@ -36,7 +36,7 @@ CLR = {'ax': 'rgb(69, 69, 69)',
        'MK87':  ['#264653', '#13242A']}
 
 
-def fes_individual(fes_path, save_path, basins=None, funnel=None,
+def fes_individual(fes_path, save_path, units='A', basins=None, funnel=None,
                    basin_lables=None, xlims=None, ylims=None,
                    labels=['CV1', 'CV2']):
     '''
@@ -49,6 +49,9 @@ def fes_individual(fes_path, save_path, basins=None, funnel=None,
     '''
     data, lab = load.fes(fes_path, False)
     data[2] = data[2]/4.184
+    if units == 'A':
+        data[0] = np.multiply(data[0], 10)
+        data[1] = np.multiply(data[1], 10)
     cmax = np.amax(data[2][np.isfinite(data[2])])+1
 
     fig = go.Figure(data=go.Contour(
@@ -70,15 +73,19 @@ def fes_individual(fes_path, save_path, basins=None, funnel=None,
                      title_text=labels[0],
                      linewidth=0.5,
                      title_standoff=20,
-                     dtick=0.5,
                      ticks='outside', minor_ticks='outside')
     fig.update_yaxes(showline=True,
                      linecolor=CLR['ax'],
                      title_text=labels[1],
                      linewidth=0.5,
-                     dtick=0.2,
                      title_standoff=20,
                      ticks='outside', minor_ticks='outside')
+    if units == 'A':
+        fig.update_xaxes(dtick=5.)
+        fig.update_yaxes(dtick=2.)
+    if units == 'nm':
+        fig.update_xaxes(dtick=0.5)
+        fig.update_yaxes(dtick=0.2)
 
     # format the rest of the figure
     fig.update_layout(height=1600, width=2200,
