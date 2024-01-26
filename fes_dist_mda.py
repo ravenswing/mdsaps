@@ -1,10 +1,7 @@
 from __future__ import print_function
-from functools import partial
 import mdtraj as md
-from multiprocessing import Pool
 import numpy as np
 import pandas as pd
-from time import time
 import sys
 
 sys.path.append('/home/rhys/phd_tools/python_scripts/')
