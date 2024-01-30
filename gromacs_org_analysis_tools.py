@@ -4,8 +4,6 @@
 ===============================================================================
 
     - sumhills
-    - 
-    - 
 """
 
 import numpy as np
@@ -13,13 +11,8 @@ import pandas as pd
 import pickle
 import subprocess
 import sys
-from glob import glob
-from math import ceil, floor
-import MDAnalysis as mda
-from MDAnalysis.analysis import diffusionmap, align, rms
 
 sys.path.append('/home/rhys/phd_tools/python_scripts')
-import graphics
 import load_data as load
 
 sys.path.append('/home/rhys/phd_tools/SAPS')
@@ -148,7 +141,7 @@ def rx():
                 # identify bound state from BASIN?
                 #init_proj = [10., 0.]
                 # run recrossing counting function
-                N, rx = identify_recross(df, 'proj', bound=init_proj, unbound=25)
+                N, rx = _identify_recross(df, 'proj', bound=init_proj, unbound=25)
                 # add values to data storage
                 data.loc[len(data.index)] = [system, lig, rep, N, rx]
 
@@ -188,3 +181,22 @@ def rx():
                     data.loc[len(data.index)] = [method, system, pdb, i, N, rx]
     # save data
     data.to_hdf(f"{STEM}/NEW_rx_from_rmsd.h5", key='df', mode='w')
+
+
+def calculate_delta_g(fes_path, CVs, A, B,
+                      vol_corr=0):
+    fes_data = load.fes(fes_path)
+    # Rename CV columns to 1 & 2
+    fes_data.rename(columns={CVs[0]: 'cv1', CVs[1]: 'cv2', 'file.free': 'val'},
+                    inplace=True)
+    # Convert the CVs to Angstroms:
+    fes_data.cv1 = fes_data.cv1.multiply(10)
+    fes_data.cv2 = fes_data.cv2.multiply(10)
+    # Isolate the values that correspond to the basins
+    basin_A = fes_data[(fes_data.cv1.between(A[0], A[1])) & (fes_data.cv2.between(A[2], A[3]))].val
+    basin_B = fes_data[(fes_data.cv1.between(B[0], B[1])) & (fes_data.cv2.between(B[2], B[3]))].val
+    # Calculate the dG from the minimum value in each basin (bound - unbound)
+    delta_g = basin_A.min() - basin_B.min()
+    # Convert to kcal and apply volume correction for funnel
+    delta_g = (delta_g / 4.184) + vol_corr
+    return delta_g

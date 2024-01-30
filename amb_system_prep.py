@@ -137,7 +137,6 @@ def make_restraints_list(wd, txt_in):
         f.write('\n'.join(new_file))
 
 
-
 def run_minimisation(wd):
     # Exectute the bash script for minimisation
     try:

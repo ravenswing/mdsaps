@@ -62,41 +62,8 @@ unbound_rmsd = {'BRD4': 15,
                 'HSP90': 20,
                 'CDK2': 25}
 
-
-def bound_check(x, bound, unbound):
-    """ Establish bound, unbound or in middle """
-    # check bounds are correct
-    assert len(bound) == 2
-    # calculate upper bound limit (avg. + std. dev. for proj)
-    threshold = bound[0] + bound[1]
-    # Value of 1 = bound
-    if x < threshold:
-        return 1
-    # Value of 2 = un-bound
-    elif x > unbound:
-        return 2
-    # Value of 0 = in the middle
-    else:
-        return 0
-
-
-def identify_recross(data, metric, bound, unbound):
-    """ Count the number of recrossings """
-    # calculate status of ligand position: 1 = bound, 2 = unbound
-    data['status'] = data[metric].apply(bound_check, args=([bound, unbound]))
-    # remove data without a status i.e. not bound or unbound
-    middle_ind = data[data.status == 0].index
-    data.drop(middle_ind, inplace=True)
-    # calculate differences in status column (diff. of 1 = transition)
-    data['diffs'] = data.status.diff()
-    # identify transitions
-    rx_ind = data[data.diffs != 0].index
-    # extract times as list for plotting
-    rx = [1.]+[t for t in data.loc[rx_ind[1:]].time.tolist()][1::2]
-    # count number of recrossings
-    N = int((len(rx)-1))
-    # output number of RX and list of RX times
-    return N, rx
+#import G.O.A.T. --> _bound_check
+#import G.O.A.T. --> _identify_recross
 
 
 def find_rx():
@@ -251,23 +218,6 @@ def extract_fes(mode='per_rx', stride=None):
                     else:
                         print('Incorrect MODE or missing STRIDE')
                         break
-
-def calculate_delta_g(fes_path, A, B, vol_corr, mode):
-    if mode == 'doms':
-        fes_data = pd.read_table(fes_path, sep="\s+", header=0, names=['proj','ext','val'])
-    else:
-        fes_data = pd.read_table(fes_path, sep="\s+", names=['proj','ext','val', 'err1', 'err2'], comment='#')
-    # convert CVs to Angstroms
-    fes_data.proj = fes_data.proj.multiply(10)
-    fes_data.ext = fes_data.ext.multiply(10)
-    # isolate the values that correspond to the basins
-    basin_A = fes_data[(fes_data.proj.between(A[0], A[1])) & (fes_data.ext.between(A[2], A[3]))].val
-    basin_B = fes_data[(fes_data.proj.between(B[0], B[1])) & (fes_data.ext.between(B[2], B[3]))].val
-    # calculate the dG from the minimum value in each basin (bound - unbound)
-    delta_g = basin_A.min() - basin_B.min()
-    # convert to kcal and apply volume correction
-    delta_g = (delta_g / 4.184) + vol_corr
-    return delta_g
 
 
 #                            proj       ext
@@ -588,6 +538,10 @@ def make_dGoT_hdf(method):
                 dG = []
                 t = []
                 for fes_path in dat_files:
+                #if mode == 'doms':
+                    #fes_data = pd.read_table(fes_path, sep="\s+", header=0, names=['proj','ext','val'])
+                #else:
+                    #fes_data = pd.read_table(fes_path, sep="\s+", names=['proj','ext','val', 'err1', 'err2'], comment='#')
                     dg = calculate_delta_g(fes_path,
                                             basins[f"{system}_B"],
                                             basins[f"{system}_U"],
