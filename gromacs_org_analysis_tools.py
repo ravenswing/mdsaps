@@ -19,14 +19,32 @@ sys.path.append('/home/rhys/phd_tools/SAPS')
 import traj_tools as tt
 
 
-def run_sumhills(wd, out_name, stride=None):
+def run_sumhills(wd, out_name, stride=None, cv=None):
+    """ Outputs:
+        - FES
+        - FES over time (with stride)
+        - 1D FES (with cv)
+    """
+    # Create FESs over time is stride is provided
     if stride is not None:
-        out_name = f'fes/{out_name}'
+        # Make a new directory to hold output
         subprocess.run(f"mkdir -p {wd}/fes", shell=True, check=True)
+        # Adjust output name for new directory
+        out_name = f'fes/{out_name}'
+        # Add flag for plumed command
+        st_flag = f" --stride {stride}"
+    else:
+        st_flag = ''
+    # Create 1D FES if cv is specified
+    if cv is not None:
+        # Add flag for plumed command (assuming 300K!)
+        cv_flag = f"--idw {cv} --kt 2.49"
+    else:
+        cv_flag = ''
+    # Construct plumed command
     cmd = (f"plumed sum_hills --hills {wd}/HILLS "
-           f"--outfile {wd}/{out_name}_FES --mintozero")
-    if stride is not None:
-        cmd += f" --stride {stride}"
+           f"--outfile {wd}/{out_name}_FES --mintozero {st_flag} {cv_flag}")
+    # Execute the plumed sum_hills command
     try:
         subprocess.run(cmd,
                        shell=True,
