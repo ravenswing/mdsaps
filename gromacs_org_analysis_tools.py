@@ -98,7 +98,7 @@ def gismo_colvar(wd, in_colvar='COLVAR', out_colvar='COLVAR_GISMO'):
 def _bound_check(x, bound, unbound):
     """ Establish bound, unbound or in middle """
     # Check bounds are correct
-    assert len(bound) == 2
+    assert len(bound) == 2, 'Bound requires 2 inputs'
     # Calculate upper bound limit (avg. + std. dev. for proj)
     threshold = bound[0] + bound[1]
     # Value of 1 = bound
@@ -131,74 +131,49 @@ def _identify_recross(data, metric, bound, unbound):
     return N, rx
 
 
-def rx():
+def rx(dir_dict, var,
+        bound=None, unbound=None, from_colvar=None, from_hdf=None,
+        outpath='rx', columns=['system', 'lig', 'rep']):
 
-    # FROM COLVAR:
-    # create storage df
-    data = pd.DataFrame(columns=['system', 'lig', 'rep', 'number', 'rx'])
+    columns = columns.extend('number', 'rx')
+    # Create storage df
+    data = pd.DataFrame(columns=columns)
 
-    for system in SYSTS:
-        for lig in LIGS:
-            for rep in ['R'+str(x) for x in np.arange(2)+1]:
-                print(system, lig, rep)
-                # load the colvar into DataFrame
-                df = load.colvar(f"{DATA_DIR}/{system}+{lig}/06-MetaD/{rep}/COLVAR", 'as_pandas')
-                # rename CV columns (- pp.)
-                df.rename(columns={'pp.proj':'proj', 'pp.ext':'ext'}, inplace=True)
-                # remove unnecessary columns
-                df.drop(columns=[col for col in df if col not in ['time', 'proj', 'ext']], inplace=True)
-                # convert time to ns
-                df.time = df.time.multiply(0.001)
-                # convert CVs to Angstroms
-                df.proj = df.proj.multiply(10)
-                df.ext = df.ext.multiply(10)
-                df['mean'] = df['proj'].rolling(500,center=True).mean()
-                # identify bound state from initial projection value
-                init_proj = [df['proj'].iloc[0], 1.5]
-                print(init_proj[0]+init_proj[1])
-                # identify bound state from BASIN?
-                #init_proj = [10., 0.]
-                # run recrossing counting function
-                N, rx = _identify_recross(df, 'proj', bound=init_proj, unbound=25)
-                # add values to data storage
-                data.loc[len(data.index)] = [system, lig, rep, N, rx]
-
-    # save data
-    data.to_hdf(f"{DATA_DIR}/Replicas_rx_from_proj.h5", key='df', mode='w')
- 
-
-    # FROM PANDAS:
-    # create storage df
-    data = pd.DataFrame(columns=['method', 'system', 'pdb', 'rep',
-                                 'number', 'rx'])
-
-    for method in ['fun-metaD', 'fun-RMSD']:
-        if 'RMSD' in method:
-            location = f"{STEM}/Fun-RMSD/analysis/RMSD_Data"
-            rep_range = [0, 1, 2]
+    for wd, ids in dir_dict.items():
+        # Check that the ids and output columns match shape
+        assert len(ids) == len(columns), 'IDs given do not match columns.'
+        # Check if both data sources are given
+        if from_colvar is not None and from_hdf is not None:
+            raise Exception('from_hdf and from_colvar are mutually exclusive')
+        # Load a format colvar data
+        elif from_colvar is not None:
+            # Load the colvar into DataFrame
+            df = load.colvar(f"{wd}/{from_colvar}", 'as_pandas')
+            # Remove unnecessary columns
+            df.drop(columns=[col for col in df if col not in ['time', var]], inplace=True)
+            # Convert time to ns
+            df.time = df.time.multiply(0.001)
+            # Convert CVs to Angstroms
+            df[var] = df[var].multiply(10)
+        # Load and format stored HDF data
+        elif from_hdf is not None:
+            df = pd.read_hdf(from_hdf, key='df')
+            df.columns = df.columns.map('-'.join)
+            var = '-'.join(ids)
+            df = df.drop(columns=[col for col in df if col not in ['time', var]])
+        # Check if any source provided
         else:
-            location = NWDA_DIR+'/RMSD_Data'
-            rep_range = [3, 4, 5]
-        for system in SYSTEMS.keys():
-            for pdb in SYSTEMS[system]:
-                for i in rep_range:
-                    if method == 'fun-metaD' and system == 'BRD4' and i == 5:
-                        continue
-                    df = pd.DataFrame()
-                    with open(f'{location}/{method}/{system}/{pdb}_{i}.p', 'rb') as f:
-                        rmsd_data = pickle.load(f)
-                    df['RMSD'] = rmsd_data
-                    # add time and convert to ns
-                    # df['time'] = np.arange(0,len(df)) if 'RMSD' in method else np.arange(0,len(df))*0.1
-                    df['time'] = np.arange(0, len(df))
-                    # run recrossing counting function
-                    N, rx = _identify_recross(df, 'RMSD',
-                                             bound=[bound_rmsd, 0.],
-                                             unbound=unbound_rmsd[system])
-                    # add values to data storage
-                    data.loc[len(data.index)] = [method, system, pdb, i, N, rx]
-    # save data
-    data.to_hdf(f"{STEM}/NEW_rx_from_rmsd.h5", key='df', mode='w')
+            raise Exception('no source for data')
+        # Identify bound state from initial CV value if none given.
+        bnd = [df[var].iloc[0], 1.0] if bound is None else bound
+        # Identify unbound state from max CV value - 10 if none given.
+        unb = df[var].max() - 10 if unbound is None else unbound
+        # Run recrossing counting function
+        N, rx = _identify_recross(df, 'cv1', bound=bnd, unbound=unb)
+        # Add values to storage dataframe
+        data.loc[len(data.index)] = ids.extend([N, rx])
+    # Save data
+    data.to_hdf(f"{outpath}.h5", key='df', mode='w')
 
 
 def calculate_delta_g(fes_path, CVs, A, B,
