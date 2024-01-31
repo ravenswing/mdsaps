@@ -178,7 +178,7 @@ def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
                       path)
 
 
-def cut_traj(trj_path, top, out_path, denom=100, split=False, strip_mask=None):
+def cut_traj(trj_path, top, out_path, dt=100, split=False, strip_mask=None):
     # Load the trajectory w. topology and run autoimage
     full_trj = pt.iterload(trj_path, top)
     full_trj = full_trj.autoimage()
@@ -186,11 +186,11 @@ def cut_traj(trj_path, top, out_path, denom=100, split=False, strip_mask=None):
     if not split:
         start_point = 1
         print(f'NOT cutting traj so starting from {start_point}')
-        N = int(full_trj.n_frames/denom)
+        N = int(full_trj.n_frames/dt)
     else:
         start_point = int(full_trj.n_frames/2)
         print(f'CUTTING traj, starting from {start_point}')
-        N = int(start_point/denom)
+        N = int(start_point/dt)
     print(f'Writing {N} frames')
     frames = np.linspace(start_point, full_trj.n_frames, num=N, dtype=int)-1
     # If a strip is required, perform the strip

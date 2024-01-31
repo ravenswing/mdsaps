@@ -54,16 +54,21 @@ def run_sumhills(wd, out_name, stride=None, cv=None):
               '. Output:', error.output.decode("utf-8"))
 
 
-def gismo_traj(wd, in_path, out_path, tpr='prod.tpr', ndx='i.ndx'):
+def cut_traj(trj_path, tpr, out_path, dt=100, ndx='i.ndx'):
     """ cutdown the trajectories using Gromacs trjconv ready for GISMO """
-    # call gmx trjconv with -dt 100 to cut down the trajectory
+    # Assume working directory is same as traj if not specified
+    tpr = tpr if '/' in tpr else '/'.join(trj_path.split('/')[:-1]) + '/' + tpr
+    out_path = out_path if '/' in out_path else '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
+    ndx = ndx if '/' in ndx else '/'.join(trj_path.split('/')[:-1]) + '/' + ndx
+    # Create the trjconv command from user input
     cmd = ("echo Backbone Protein_LIG | gmx_mpi trjconv "
-           f"-s {wd}/{tpr} "
-           f"-f {wd}/{in_path} "
-           f"-o {wd}/{out_path} "
-           f"-n {wd}/{ndx} "
+           f"-s {tpr} "
+           f"-f {trj_path} "
+           f"-o {out_path} "
+           f"-n {ndx} "
            "-fit rot+trans "
-           "-dt 100 ")
+           f"-dt {dt} ")
+    # Run the trjconv command
     try:
         subprocess.run(cmd,
                        shell=True,
@@ -124,7 +129,7 @@ def _identify_recross(data, metric, bound, unbound):
     # Identify transitions
     rx_ind = data[data.diffs != 0].index
     # Extract times as list for plotting
-    rx = [1.]+[t for t in data.loc[rx_ind[1:]].time.tolist()][1::2]
+    rx = [1.]+[t for t in data.loc[rx_ind[1:]].t.tolist()][1::2]
     # Count number of recrossings
     N = int((len(rx)-1))
     # Output number of RX and list of RX times
@@ -135,12 +140,11 @@ def rx(dir_dict, var,
         bound=None, unbound=None, from_colvar=None, from_hdf=None,
         outpath='rx', columns=['system', 'lig', 'rep']):
 
-    columns = columns.extend('number', 'rx')
     # Create storage df
-    data = pd.DataFrame(columns=columns)
+    data = pd.DataFrame(columns=columns + ['number', 'rx'])
 
     for wd, ids in dir_dict.items():
-        # Check that the ids and output columns match shape
+        # Check that the ids and output columns match shape 
         assert len(ids) == len(columns), 'IDs given do not match columns.'
         # Check if both data sources are given
         if from_colvar is not None and from_hdf is not None:
@@ -149,29 +153,47 @@ def rx(dir_dict, var,
         elif from_colvar is not None:
             # Load the colvar into DataFrame
             df = load.colvar(f"{wd}/{from_colvar}", 'as_pandas')
+            # Rename time column
+            df.rename(columns={'time': 't'}, inplace=True)
             # Remove unnecessary columns
-            df.drop(columns=[col for col in df if col not in ['time', var]], inplace=True)
-            # Convert time to ns
-            df.time = df.time.multiply(0.001)
+            df.drop(columns=[col for col in df if col not in ['t', var]],
+                    inplace=True)
             # Convert CVs to Angstroms
             df[var] = df[var].multiply(10)
         # Load and format stored HDF data
         elif from_hdf is not None:
+            # Load hdf file
             df = pd.read_hdf(from_hdf, key='df')
+            # Collapse multi-indexing
             df.columns = df.columns.map('-'.join)
+            # Column name to match, based on ids
             var = '-'.join(ids)
-            df = df.drop(columns=[col for col in df if col not in ['time', var]])
+            # Create time column from df index
+            df['t'] = df.index.to_series()
+            # Remove unnecessary columns
+            df = df.drop(columns=[col for col in df if col not in ['t', var]])
         # Check if any source provided
         else:
             raise Exception('no source for data')
+        # Convert time to ns
+        df.t = df.t.multiply(0.001)
         # Identify bound state from initial CV value if none given.
-        bnd = [df[var].iloc[0], 1.0] if bound is None else bound
+        if bound is None:
+            bnd = [df[var].iloc[0], 1.0]
+        # If only int is given assume +/- = 0
+        elif isinstance(bound, float):
+            bnd = [bound, 0.0]
+        elif isinstance(bound, list):
+            bnd = bound
+        # Check if bound is either a list or an int
+        else:
+            raise Exception("Bound must be float or list")
         # Identify unbound state from max CV value - 10 if none given.
         unb = df[var].max() - 10 if unbound is None else unbound
         # Run recrossing counting function
-        N, rx = _identify_recross(df, 'cv1', bound=bnd, unbound=unb)
+        N, rx = _identify_recross(df, var, bound=bnd, unbound=unb)
         # Add values to storage dataframe
-        data.loc[len(data.index)] = ids.extend([N, rx])
+        data.loc[len(data.index)] = ids + [N, rx]
     # Save data
     data.to_hdf(f"{outpath}.h5", key='df', mode='w')
 

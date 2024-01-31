@@ -173,43 +173,6 @@ def measure_rmsd(top_path, trj_path, ref_str, rmsd_groups,
     return R
 
 
-def measure_rmsf(top_path, trj_path, ref_str, rmsd_groups,
-                 aln_group='backbone'):
-    # Load the topology and trajectory
-    U = _init_universe([top_path, trj_path])
-    if ref_str:
-        # Load ref. structure if path is given
-        ref = _init_universe(ref_str)
-    else:
-        # If ref_str = 0 i.e. use starting frame, assign ref as input traj.
-        ref = U
-    R = rms.RMSF(U,  # universe to align
-                 ref,  # reference universe or atomgroup
-                 select=aln_group,  # group to superimpose and calculate RMSD
-                 groupselections=rmsd_groups,  # groups for RMSD
-                 ref_frame=0).run()  # frame index of the reference
-    return R
-
-
-def dump_rmsd(top_path, trj_path, ref_str, out_path=None,
-              align='backbone', measure=['backbone']):
-
-    R = measure_rmsd(top_path, trj_path, ref_str, measure, aln_group=align)
-
-    if out_path:
-        print(f"Writing RMSD file to: {out_path}")
-        rmsd = R.results.rmsd[:, -1]
-        with open(out_path, 'wb') as f:
-            pickle.dump(rmsd, f)
-    else:
-        for i, name in enumerate(measure):
-            rmsd = R.results.rmsd[:, 3+i]
-            outname = f"{'/'.join(trj_path.split('/')[:-1])}/{name}_rmsd.p"
-            print(f"Writing RMSD file to: {outname}")
-        with open(outname, 'wb') as f:
-            pickle.dump(rmsd, f)
-
-
 def calculate_rmsd(DIVS, top_frmt, trj_frmt, hdf_path, measure,
                    ref_frmt=None, align='backbone', unique_ligs=False):
     all_sys = DIVS if unique_ligs else product(*DIVS)
@@ -270,6 +233,43 @@ def calculate_rmsd(DIVS, top_frmt, trj_frmt, hdf_path, measure,
             inp_s.to_hdf(hdf_path, key='df')
             i += 1
             continue
+
+
+def dump_rmsd(top_path, trj_path, ref_str, out_path=None,
+              align='backbone', measure=['backbone']):
+
+    R = measure_rmsd(top_path, trj_path, ref_str, measure, aln_group=align)
+
+    if out_path:
+        print(f"Writing RMSD file to: {out_path}")
+        rmsd = R.results.rmsd[:, -1]
+        with open(out_path, 'wb') as f:
+            pickle.dump(rmsd, f)
+    else:
+        for i, name in enumerate(measure):
+            rmsd = R.results.rmsd[:, 3+i]
+            outname = f"{'/'.join(trj_path.split('/')[:-1])}/{name}_rmsd.p"
+            print(f"Writing RMSD file to: {outname}")
+        with open(outname, 'wb') as f:
+            pickle.dump(rmsd, f)
+
+
+def measure_rmsf(top_path, trj_path, ref_str, rmsd_groups,
+                 aln_group='backbone'):
+    # Load the topology and trajectory
+    U = _init_universe([top_path, trj_path])
+    if ref_str:
+        # Load ref. structure if path is given
+        ref = _init_universe(ref_str)
+    else:
+        # If ref_str = 0 i.e. use starting frame, assign ref as input traj.
+        ref = U
+    R = rms.RMSF(U,  # universe to align
+                 ref,  # reference universe or atomgroup
+                 select=aln_group,  # group to superimpose and calculate RMSD
+                 groupselections=rmsd_groups,  # groups for RMSD
+                 ref_frame=0).run()  # frame index of the reference
+    return R
 
 
 def measure_rgyr(top_path, trj_path, selection):
