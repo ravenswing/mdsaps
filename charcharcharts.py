@@ -36,9 +36,9 @@ CLR = {'ax': 'rgb(69, 69, 69)',
        'MK87':  ['#264653', '#13242A']}
 
 
-def fes_individual(fes_path, save_path, units='A', basins=None, funnel=None,
-                   basin_lables=None, xlims=None, ylims=None,
-                   labels=['CV1', 'CV2']):
+def fes(fes_path, save_path, units='A', basins=None, funnel=None,
+        basin_lables=None, xlims=None, ylims=None,
+        labels=['CV1', 'CV2']):
     '''
     funnel_parms = {'lw': 0.0,
                     'uw': 4.5,
@@ -259,3 +259,20 @@ def diffusion(DIVS, path_frmt, save_frmt, shape, cvs):
             ax[i].set_ylabel(' / '.join(cvs[cv]))
         fig.savefig(save_frmt.format(cvs[cv][0]), dpi=300, bbox_inches='tight')
         plt.close()
+
+
+def cvs(colvar_path, save_path, cvs, units='A', title='CV Diffusion',
+        xlims=None, ylims=None):
+    colvar = load.colvar(f"{colvar_path}")
+    N = len(list(cvs.keys()))
+    fig, ax = plt.subplots(1, N, figsize=(8*N+2, 6), layout='constrained')
+    for i, cv in enumerate(list(cvs.keys())):
+        ax[i].scatter(colvar.time.multiply(0.001),
+                      colvar[cv].multiply(10),
+                      c='#089682', s=8, alpha=.4)
+        ax[i].set_xlabel('Time (ns)')
+        ax[i].set_ylabel(f"{cvs[cv]}")
+    fig.suptitle(f"{title}", fontsize=16)
+
+    fig.savefig(f"{save_path}", bbox_inches='tight', dpi=300)
+    plt.close()
