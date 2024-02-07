@@ -1,5 +1,5 @@
 # S.A.P.S.
-**S**imulation **A**nalysis and **P**reparation **S**cripts
+**S**imulation **A**nalysis and **P**reparation **S**uite
 
 ## Traj Tools
 
