@@ -19,9 +19,6 @@ from plotly.subplots import make_subplots
 sys.path.append('/home/rhys/phd_tools/SAPS')
 import load
 
-sys.path.append('/home/rhys/phd_tools/SAPS')
-
-
 ANG = "\u212B"
 
 # global colours
@@ -288,3 +285,83 @@ def hills_multi(DIVS, path_frmt, save_name, shape):
         ax[i].set_ylabel('Hills Heights')
     fig.savefig(save_name, dpi=300, bbox_inches='tight')
     plt.close()
+
+
+def xvg_line(xvg_data, ax, col, line='solid', rollavg=True, label=None):
+    head = xvg_data.columns.values.tolist()
+    xvg_data['mean'] = xvg_data[head[1]].rolling(500, center=True).mean()
+    y1 = xvg_data[head[1]].values*10
+    y2 = xvg_data['mean'].values*10
+    x = xvg_data[head[0]]/1000
+    ax.plot(x, y1, c=col, alpha=0.3, lw=0.5)
+    ax.plot(x, y2, c=col, alpha=1., lw=1., ls=line, label=label)
+    ax.grid(alpha=0.3)
+
+
+def convergence(fes_dir, ts_list, ax):
+    """ Plot convergence of cv """
+    lin_cols = ['xkcd:light red', 'xkcd:light orange', 'xkcd:light green',
+                'xkcd:light cyan', 'xkcd:ocean blue']
+    init_file = '{}/fes_{}.dat'.format(fes_dir, int(ts_list[0]/10))
+    conv_data = pd.concat([df[df.cv != "#!"] for df in
+                          pd.read_csv(init_file,
+                                      delim_whitespace=True,
+                                      names=['cv', str(ts_list[0])],
+                                      skiprows=5,
+                                      chunksize=1000)])
+    for timestamp in ts_list[1:]:
+        fes_file = '{}/fes_{}.dat'.format(fes_dir, int(timestamp/10))
+        fes_data = pd.concat([df[df.cv != "#!"] for df in
+                             pd.read_csv(fes_file,
+                                         delim_whitespace=True,
+                                         names=['cv', str(timestamp)],
+                                         skiprows=5, chunksize=1000)])
+        conv_data = pd.merge(conv_data, fes_data, on='cv')
+    for i in np.arange(len(ts_list)):
+        ax.plot(conv_data['cv'],
+                [y/4.184 for y in conv_data[str(ts_list[i])]],
+                c=lin_cols[i], label=str(ts_list[i])+' ns')
+
+    nm = re.split('/|_', fes_dir)
+    rew_file = '{p}_{f}/{p}-{f}_{c}.fes'.format(p=nm[0], f=nm[1], c=nm[-1])
+    rew_data = pd.read_csv(rew_file,
+                           delim_whitespace=True,
+                           names=['rx', 'ry'],
+                           skiprows=5)
+    ax.plot(rew_data['rx'], [y/4.184 for y in rew_data['ry']], 'k')
+    if 'proj' in fes_dir:
+        ax.set_xlim([-0.3, 5.0])
+        ax.set_xticks(np.arange(6))
+    else:
+        ax.set_xlim([-0.1, 1.7])
+        ax.set_xticks(np.linspace(0., 1.5, num=4))
+    ax.set_ylim([0, 20.])
+    ax.grid(alpha=0.5)
+
+
+def dgdt(y, exp_value, ax):
+
+    x = np.linspace(0., len(y)*10, len(y))
+
+    ax.scatter(x, y, c='k', s=8, marker='D', zorder=1)
+    ax.plot(x, y, c='k', zorder=2, alpha=.5)
+
+    ax.axhline(y=exp_value, xmin=0., xmax=max(x), c='xkcd:green', ls='--')
+
+    ax.axhspan(ymin=exp_value-2, ymax=exp_value+2, xmin=0., xmax=max(x),
+               facecolor='xkcd:green', alpha=0.2)
+    ax.axhline(y=exp_value+2, xmin=0., xmax=max(x),
+               color='xkcd:green', alpha=0.2)
+    ax.axhline(y=exp_value-2, xmin=0., xmax=max(x),
+               color='xkcd:green', alpha=0.2)
+    ax.axhspan(ymin=exp_value-3.5, ymax=exp_value+3.5, xmin=0., xmax=max(x),
+               facecolor='xkcd:orange', alpha=0.2)
+    ax.axhline(y=exp_value+3.5, xmin=0., xmax=max(x),
+               color='xkcd:orange', alpha=0.2)
+    ax.axhline(y=exp_value-3.5, xmin=0., xmax=max(x),
+               color='xkcd:orange', alpha=0.2)
+
+    ax.set_xlim([-5., max(x)+10])
+    ax.set_ylim([-25., 5.0])
+    ax.grid(alpha=0.3)
+
