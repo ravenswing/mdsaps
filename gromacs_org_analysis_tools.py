@@ -215,3 +215,56 @@ def calculate_delta_g(fes_path, CVs, A, B,
     # Convert to kcal and apply volume correction for funnel
     delta_g = (delta_g / 4.184) + vol_corr
     return delta_g
+
+
+def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
+                     out_group='System'):
+    # Assume working directory is same as traj if not specified
+    tpr = tpr if '/' in tpr else '/'.join(trj_path.split('/')[:-1]) + '/' + tpr
+    ndx = ndx if '/' in ndx else '/'.join(trj_path.split('/')[:-1]) + '/' + ndx
+    if out_path is None:
+        out_path = (f"{'/'.join(trj_path.split('/')[:-1])}/"
+                    f"{trj_path.split('/')[-1][:-4]}_final.xtc")
+    elif '/' not in out_path:
+        out_path = '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
+    # Step 1: -pbc whole, produces tmp1.xtc
+    try:
+        subprocess.run((f"echo {out_group} | gmx_mpi trjconv "
+                        f"-f {trj_path} "
+                        f"-s {tpr} "
+                        f"-n {ndx} "
+                        "-o /tmp/tmp1.xtc "
+                        '-pbc whole '),
+                       check=True,
+                       shell=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    # Step 2: -pbc cluster, produces tmp2.xtc
+    try:
+        subprocess.run((f"echo Protein {out_group} | gmx_mpi trjconv "
+                        "-f /tmp/tmp1.xtc "
+                        f"-s {tpr} "
+                        f"-n {ndx} "
+                        "-o /tmp/tmp2.xtc "
+                        '-pbc cluster '),
+                       check=True,
+                       shell=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    # run trjconv to produce a readable output
+    try:
+        subprocess.run((f"echo Protein {out_group} | gmx_mpi trjconv "
+                        f"-f /tmp/tmp2.xtc "
+                        f"-s {tpr} "
+                        f"-n {ndx} "
+                        f"-o {out_path} "
+                        '-pbc mol -ur compact -center'),
+                       check=True,
+                       shell=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    # Remove temp xtc files if necessary
+    subprocess.run("rm /tmp/*.xtc", shell=True)

@@ -224,21 +224,20 @@ def all_columns(hdf_path, save_frmt, title='Highlight:',
         plt.close()
 
 
-def hills(DIVS, path_frmt, save_name, shape):
-    fig, ax = plt.subplots(shape[0], shape[1],
-                            figsize=(shape[1]*8, shape[0]*5),
-                            sharey=True, sharex=True)
-    ax = ax.ravel()
-    fig.tight_layout(h_pad=4)
-    plt.suptitle("Hill Heights")
-    plt.subplots_adjust(top=0.94)
-    for i, p in enumerate(DIVS):
-        data = load.hills(path_frmt.format(p=p))
-        ax[i].plot([x/1000 for x in data[0]], data[1])
-        ax[i].set_title(' '.join(p))
-        ax[i].set_xlabel("Simulation Time / ns")
-        ax[i].set_ylabel('Hills Heights')
-    fig.savefig(save_name, dpi=300, bbox_inches='tight')
+def cvs(colvar_path, save_path, cvs, units='A', title='CV Diffusion',
+        xlims=None, ylims=None):
+    colvar = load.colvar(f"{colvar_path}")
+    N = len(list(cvs.keys()))
+    fig, ax = plt.subplots(1, N, figsize=(8*N+2, 6), layout='constrained')
+    for i, cv in enumerate(list(cvs.keys())):
+        ax[i].scatter(colvar.time.multiply(0.001),
+                      colvar[cv].multiply(10),
+                      c='#089682', s=8, alpha=.4)
+        ax[i].set_xlabel('Time (ns)')
+        ax[i].set_ylabel(f"{cvs[cv]}")
+    fig.suptitle(f"{title}", fontsize=16)
+
+    fig.savefig(f"{save_path}", bbox_inches='tight', dpi=300)
     plt.close()
 
 
@@ -261,18 +260,31 @@ def diffusion(DIVS, path_frmt, save_frmt, shape, cvs):
         plt.close()
 
 
-def cvs(colvar_path, save_path, cvs, units='A', title='CV Diffusion',
-        xlims=None, ylims=None):
-    colvar = load.colvar(f"{colvar_path}")
-    N = len(list(cvs.keys()))
-    fig, ax = plt.subplots(1, N, figsize=(8*N+2, 6), layout='constrained')
-    for i, cv in enumerate(list(cvs.keys())):
-        ax[i].scatter(colvar.time.multiply(0.001),
-                      colvar[cv].multiply(10),
-                      c='#089682', s=8, alpha=.4)
-        ax[i].set_xlabel('Time (ns)')
-        ax[i].set_ylabel(f"{cvs[cv]}")
-    fig.suptitle(f"{title}", fontsize=16)
-
+def hills(hills_path, save_path, units='A', title='CV Diffusion',
+          xlims=None, ylims=None):
+    hills = load.hills(f"{hills_path}")
+    fig, ax = plt.subplots(figsize=(10, 6), layout='constrained')
+    ax.plot([x/1000 for x in hills[0]], hills[1], c='#089682')
+    ax.set_xlabel('Time (ns)')
+    ax.set_ylabel("Hill Height")
+    ax.set_title(f"{title}", fontsize=16)
     fig.savefig(f"{save_path}", bbox_inches='tight', dpi=300)
+    plt.close()
+
+
+def hills_multi(DIVS, path_frmt, save_name, shape):
+    fig, ax = plt.subplots(shape[0], shape[1],
+                           figsize=(shape[1]*8, shape[0]*5),
+                           sharey=True, sharex=True)
+    ax = ax.ravel()
+    fig.tight_layout(h_pad=4)
+    plt.suptitle("Hill Heights")
+    plt.subplots_adjust(top=0.94)
+    for i, p in enumerate(DIVS):
+        data = load.hills(path_frmt.format(p=p))
+        ax[i].plot([x/1000 for x in data[0]], data[1], c='#089682')
+        ax[i].set_title(' '.join(p))
+        ax[i].set_xlabel("Simulation Time / ns")
+        ax[i].set_ylabel('Hills Heights')
+    fig.savefig(save_name, dpi=300, bbox_inches='tight')
     plt.close()
