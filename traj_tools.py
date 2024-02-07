@@ -19,14 +19,6 @@ from os.path import exists
 ANG = "\u212B"
 
 
-def read_pdb(path):
-    # Load complex pdb to edit
-    with open(path, 'r') as f:
-        lines = f.readlines()
-    print(f'Loaded {path}')
-    lines = [line.split() for line in lines]
-    return lines
-
 
 def _process_atm_nm(name):
     # Full length names are left unchanged

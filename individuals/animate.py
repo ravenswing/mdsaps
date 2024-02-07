@@ -4,8 +4,8 @@ import numpy as np
 import sys
 import subprocess
 
-sys.path.append('/home/rhys/phd_tools/python_scripts')
-import load_data as load
+sys.path.append('/home/rhys/phd_tools/SAPS')
+import load
 
 # (Optional) Set the dots per inch resolution to 300
 gif.options.matplotlib["dpi"] = 100

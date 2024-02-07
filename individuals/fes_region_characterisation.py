@@ -7,8 +7,8 @@ import pandas as pd
 from time import time
 import sys
 
-sys.path.append('/home/rhys/phd_tools/python_scripts/')
-from load_data import colvar
+sys.path.append('/home/rhys/phd_tools/SAPS')
+from load import colvar
 
 
 def import_basins(csv):

@@ -12,8 +12,8 @@ import pickle
 import subprocess
 import sys
 
-sys.path.append('/home/rhys/phd_tools/python_scripts')
-import load_data as load
+sys.path.append('/home/rhys/phd_tools/SAPS')
+import load
 
 sys.path.append('/home/rhys/phd_tools/SAPS')
 import traj_tools as tt
@@ -268,3 +268,22 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
               '. Output:', error.output.decode("utf-8"))
     # Remove temp xtc files if necessary
     subprocess.run("rm /tmp/*.xtc", shell=True)
+
+
+def concat_traj(directory, out_path='full_traj.xtc'):
+
+    # Assume input file extension based on output path
+    ext = out_path.split('.')[-1]
+
+    # todo: check that the files exist
+    # todo: check that all the names of the inputs are the same:
+    #       i.e. there are not name.part000*.xtc AND name.xtc
+    try:
+        subprocess.run(("gmx_mpi trjcat "
+                        f"-f {directory}/*.{ext} "
+                        f"-o {directory}/{out_path} "),
+                       check=True,
+                       shell=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))

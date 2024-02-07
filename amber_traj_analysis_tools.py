@@ -25,9 +25,8 @@ from MDAnalysis.analysis import diffusionmap, rms
 import sys
 sys.path.append('/home/rhys/phd_tools/SAPS')
 import traj_tools as tt
-sys.path.append('/home/rhys/phd_tools/python_scripts')
 import graphics
-import load_data as load
+import load
 '''
 
 

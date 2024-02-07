@@ -1,6 +1,6 @@
 """
 ===============================================================================
-                            PLOTTING SUPER
+                      CHAR CHAR CHAR CHAR CHAR CHARTS!!!
 ===============================================================================
 
     - Analysis
@@ -16,8 +16,8 @@ from glob import glob
 from math import ceil
 from plotly.subplots import make_subplots
 
-sys.path.append('/home/rhys/phd_tools/python_scripts')
-import load_data as load
+sys.path.append('/home/rhys/phd_tools/SAPS')
+import load
 
 sys.path.append('/home/rhys/phd_tools/SAPS')
 
