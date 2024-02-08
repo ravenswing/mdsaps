@@ -16,7 +16,6 @@ import pickle
 import pytraj as pt
 import subprocess
 
-from itertools import product
 from MDAnalysis.analysis import rms
 from parmed import gromacs, amber, load_file
 from os.path import exists
@@ -182,7 +181,6 @@ def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
             new_dfs.append(pd.concat({level: new_dfs[i-1]}, axis=1))
     # Multi-Indexed df is the last df made
     df = new_dfs[-1]
-    print(type(df))
 
     # If there is already an hdf file...
     if exists(hdf_path):

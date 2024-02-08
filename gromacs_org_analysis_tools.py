@@ -284,3 +284,29 @@ def concat_traj(directory, out_path='full_traj.xtc'):
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
+
+
+def snapshot_pdbs(trj_path, tpr, snapshots, ns=True, ref_str=None):
+    tpr = tpr if '/' in tpr else '/'.join(trj_path.split('/')[:-1]) + '/' + tpr
+    out_path = '/'.join(trj_path.split('/')[:-1]) + '/snapshots'
+    # Make the directory for the output
+    try:
+        subprocess.run(f"mkdir -p {out_path}",
+                       shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+    # Define the output name
+    stem = trj_path.split('/')[-1].split('.')[0]
+    for ts in snapshots:
+        ts = ts*1000 if ns else ts
+        try:
+            subprocess.run(('echo 0 | gmx_mpi trjconv '
+                            f"-f {trj_path} "
+                            f"-s {tpr} "
+                            f"-o {out_path}/{stem}_{ts}.pdb "
+                            f"-dump {ts}"),
+                           shell=True, check=True)
+        except subprocess.CalledProcessError as error:
+            print('Error code:', error.returncode,
+                  '. Output:', error.output.decode("utf-8"))

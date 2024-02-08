@@ -303,30 +303,6 @@ def fes_by_system(ligand_list, system_list, n_reps, basins=None):
                         bbox_inches='tight')
 
 
-def snapshot_pdbs(directory, trj_path, top_path, snapshots, ref_str=None):
-    # Make the directory for the output
-    try:
-        subprocess.run(f"mkdir -p {directory}/snapshots/",
-                       shell=True, check=True)
-    except subprocess.CalledProcessError as error:
-        print('Error code:', error.returncode,
-              '. Output:', error.output.decode("utf-8"))
-    # Define the output name
-    stem = trj_path.split('/')[-1].split('.')[0]
-    if isinstance(snapshots[0], int):
-        for ts in snapshots:
-            try:
-                subprocess.run(('echo 0 | gmx_mpi trjconv '
-                                f"-f {trj_path} "
-                                f"-s {top_path} "
-                                f"-o {directory}/snapshots/{stem}_{ts}.pdb "
-                                f"-dump {ts*1000}"),
-                               shell=True, check=True)
-            except subprocess.CalledProcessError as error:
-                print('Error code:', error.returncode,
-                      '. Output:', error.output.decode("utf-8"))
-    elif isinstance(snapshots[0], list):
-        for snl in snapshots:
             '''
             file1.append(f"trajin {trj_path} {' '.join([str(i) for i in snl])}")
             # Load reference structure (.top + .r)
