@@ -12,11 +12,8 @@ import pickle
 import subprocess
 import sys
 
-sys.path.append('/home/rhys/phd_tools/SAPS')
-import load
-
-sys.path.append('/home/rhys/phd_tools/SAPS')
 import traj_tools as tt
+import load
 
 
 def run_sumhills(wd, out_name, stride=None, cv=None):

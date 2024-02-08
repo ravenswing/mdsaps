@@ -2,7 +2,6 @@ import MDAnalysis as mda
 from MDAnalysis.analysis import align, rms
 import MDAnalysis.transformations as trans
 import pandas as pd
-from os.path import exists
 import argparse
 
 parser = argparse.ArgumentParser(
@@ -11,18 +10,11 @@ parser = argparse.ArgumentParser(
                     epilog='Text at the bottom of help')
 parser.add_argument('top_path', type=str)
 parser.add_argument('trj_path', type=str)
-parser.add_argument('hdf', type=str)
+parser.add_argument('out_path', type=str)
 parser.add_argument('measure', type=str)
 parser.add_argument('select', type=str)
 parser.add_argument('-res', action="store_true")
-parser.add_argument('-ids', nargs='+', required=True)
 args = parser.parse_args()
-hdf_path = args.hdf
-ids = args.ids
-
-
-for i in ids:
-    print(i)
 
 
 def measure_rmsf(top_path, trj_path, measure="backbone", select="protein",
@@ -80,6 +72,12 @@ new_data = measure_rmsf(args.top_path,
                         args.select,
                         args.res)
 
+print(f"Writing RMSF data to {args.out_path}")
+new_data.to_hdf(args.out_path, key='df')
+
+"""
+PREVIOUS METHODOLOGY
+
 # Rename and stack for MultiIndexing
 new_data.rename(columns={'rmsf': ids[2]}, inplace=True)
 inp_l = pd.concat({ids[1]: new_data}, axis=1)
@@ -107,3 +105,4 @@ else:
     # Make a new hdf file and save the first column of data
     print('First time --> Creating Files')
     inp_s.to_hdf(hdf_path, key='df')
+"""

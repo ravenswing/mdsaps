@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 import pickle
 import pytraj as pt
-import subprocess
 
 from itertools import product
 from MDAnalysis.analysis import rms
@@ -164,55 +163,69 @@ def measure_rmsd(top_path, trj_path, ref_str, rmsd_groups,
                  select=aln_group,  # group to superimpose and calculate RMSD
                  groupselections=rmsd_groups,  # groups for RMSD
                  ref_frame=0).run()  # frame index of the reference
-    return pd.DataFrame(columns=['t', 'rmsd'], data=R.results.rmsd[:, [1, -1]])
+    return R
 
 
-def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
+def save_rmsd(top_path, trj_path, hdf_path, measure,
+                   ref_path=None, align='backbone'):
+    all_sys = DIVS if unique_ligs else product(*DIVS)
+    for i, p in enumerate(all_sys):
+        p = list(p)
 
-    # Create dataframe from new data with desired index and 1 column
-    inp = new_data.rename(columns={data_col: ids[-1]}).set_index(index_col)
-    # Create multi-indexed dataframe based on provided ids (as levels)
-    new_dfs = []
-    for i, level in enumerate([ids[i] for i in range(len(ids) - 2, -1, -1)]):
-        # First instance takes the input dataframe made above
-        if i == 0:
-            new_dfs.append(pd.concat({level: inp}, axis=1))
-        # Others take the ids in reverse order, and the prev. df
+        print(f"Processing: {' '.join(p)}")
+
+        if ref_frmt is not None:
+            if isinstance(ref_frmt, int):
+                ref = ref_frmt
+            else:
+                ref = ref_frmt.format(p=p)
         else:
-            new_dfs.append(pd.concat({level: new_dfs[i-1]}, axis=1))
-    # Multi-Indexed df is the last df made
-    df = new_dfs[-1]
-    print(type(df))
+            ref = top_frmt.format(p=p)
 
-    # If there is already an hdf file...
-    if exists(hdf_path):
-        print('Further time --> Reading Files & Adding Data')
-        new = pd.read_hdf(hdf_path, key='df')
-        # ...and the column exists, update the values.
-        if any([(mi == df.columns)[0] for mi in new.columns]):
-            print("Updating values in DataFrame.")
-            new.update(df)
-        # ...and the data is new, add the new data.
+        print(f"Using Ref.: {ref} ({type(ref)})")
+
+        # LIGAND & BACKBONE RMSD
+        new_data = measure_rmsd(top_frmt.format(p=p),
+                                trj_frmt.format(p=p),
+                                ref,
+                                [measure],
+                                aln_group=align).run()
+        if len(all_sys[0]) == 3:
+
+            inp = pd.DataFrame(columns=['t', p[2]],
+                    data=new_data.results.rmsd[:, [1, -1]]).set_index('t')
+            inp_l = pd.concat({p[1]: inp}, axis=1)
+            inp_s = pd.concat({p[0]: inp_l}, axis=1)
+
+        elif len(all_sys[0]) == 2:
+            inp = pd.DataFrame(columns=['t', p[1]],
+                    data=new_data.results.rmsd[:, [1, -1]]).set_index('t')
+            inp_s = pd.concat({p[0]: inp}, axis=1)
+
+        # If there is already an hdf file
+        if exists(hdf_path):
+            print('Further time --> Reading Files & Adding Data')
+            new = pd.read_hdf(hdf_path, key='df')
+            # Update the values if the data already exists
+            if any([(mi == inp_s.columns)[0] for mi in new.columns]):
+                print("Updating values in DataFrame.")
+                new.update(inp_s)
+            # Or add the new data
+            else:
+                print("Adding new values to DataFrame.")
+                new = new.join(inp_s)
+            # Reorder the columns before saving the data 
+            new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
+            # Write the new data to the existing file
+            new.to_hdf(hdf_path, key='df')
+
+        # Or create one
         else:
-            print("Adding new values to DataFrame.")
-            new = new.join(df)
-        # Reorder the columns before saving the data.
-        new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
-        # Write the new data to the existing file.
-        new.to_hdf(hdf_path, key='df')
-
-    # But if there is not a file already...
-    else:
-        # ... make a new hdf file and save the first column of data.
-        print('First time --> Creating Files')
-        df.to_hdf(hdf_path, key='df')
-
-
-def save_rmsd(ids, top_path, trj_path, hdf_path, measure,
-              ref_path=None, align='backbone'):
-    rmsd = measure_rmsd(top_path, trj_path, ref_path,
-                        [measure], aln_group=align)
-    multiindex_hdf(rmsd, ids, hdf_path, 'rmsd', 't')
+            # Make a new hdf file and save the first column of data
+            print('First time --> Creating Files')
+            inp_s.to_hdf(hdf_path, key='df')
+            i += 1
+            continue
 
 
 def dump_rmsd(top_path, trj_path, ref_str, out_path=None,
@@ -234,37 +247,8 @@ def dump_rmsd(top_path, trj_path, ref_str, out_path=None,
             pickle.dump(rmsd, f)
 
 
-def measure_rmsf(top_path, trj_path, measure, per_res=True,
+def measure_rmsf(top_path, trj_path, ref_str, rmsd_groups,
                  aln_group='backbone'):
-    res = ' -res ' if per_res else ''
-
-    # Measure the RMSF
-    try:
-
-        subprocess.run((f"python measure_rmsf.py "
-                        f"{top_path} {trj_path} "
-                        '/tmp/rmsf.h5 '
-                        f"{aln_group} {measure} {res}"),
-                       shell=True,
-                       check=True)
-    except subprocess.CalledProcessError as error:
-        print('Error code:', error.returncode,
-              '. Output:', error.output.decode("utf-8"))
-
-    df = pd.read_hdf('/tmp/rmsf.h5', key='df', mode='r').reset_index()
-    print(df)
-    return df
-
-
-def save_rmsf(ids, top_path, trj_path, hdf_path, measure, per_res=True,
-              align='backbone'):
-    rmsf = measure_rmsd(top_path, trj_path, measure, per_res, aln_group=align)
-    index = 'res' if per_res else 'atom'
-    multiindex_hdf(rmsf, ids, hdf_path, 'rmsf', index)
-
-
-def simple_rmsf(top_path, trj_path, ref_str, rmsd_groups,
-                aln_group='backbone'):
     # Load the topology and trajectory
     U = _init_universe([top_path, trj_path])
     if ref_str:
@@ -289,12 +273,7 @@ def measure_rgyr(top_path, trj_path, selection):
     for ts in U.trajectory:
         Rgyr.append((U.trajectory.time, protein.radius_of_gyration()))
     Rgyr = np.array(Rgyr)
-    return pd.DataFrame(columns=['t', 'rgyr'], data=Rgyr)
-
-
-def save_rgyr(ids, top_path, trj_path, hdf_path, measure, align='backbone'):
-    rgyr = measure_rgyr(top_path, trj_path, measure)
-    multiindex_hdf(rgyr, ids, hdf_path, 'rgyr', 't')
+    return Rgyr
 
 
 def simple_avg_table(hdf_path, csv=None):
