@@ -21,6 +21,10 @@ from parmed import gromacs, amber, load_file
 from os.path import exists
 
 
+def log(level, message):
+    print(f"{level.upper(): <6} | {message}")
+
+
 def _process_atm_nm(name):
     # Full length names are left unchanged
     if len(name) == 4:
@@ -184,30 +188,30 @@ def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
 
     # If there is already an hdf file...
     if exists(hdf_path):
-        print('Further time --> Reading Files & Adding Data')
+        log('info', 'HDF Exists --> Reading File & Adding Data')
         new = pd.read_hdf(hdf_path, key='df')
         # ...and the column exists, update the values.
         if any([(mi == df.columns)[0] for mi in new.columns]):
-            print("Updating values in DataFrame.")
+            log('info', "Updating values in DataFrame.")
             new.update(df)
         # ...and the data is new, add the new data.
         else:
-            print("Adding new values to DataFrame.")
+            log('info', "Adding new values to DataFrame.")
             new = new.join(df)
         # Reorder the columns before saving the data.
         new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
         # Write the new data to the existing file.
         new.to_hdf(hdf_path, key='df')
-
     # But if there is not a file already...
     else:
         # ... make a new hdf file and save the first column of data.
-        print('First time --> Creating Files')
+        log('info', 'No HDF Found --> Creating File')
         df.to_hdf(hdf_path, key='df')
 
 
 def save_rmsd(ids, top_path, trj_path, hdf_path, measure,
               ref_path=None, align='backbone'):
+    log('info', 'Running RMSD Calc. for ' + ' '.join(ids))
     rmsd = measure_rmsd(top_path, trj_path, ref_path,
                         [measure], aln_group=align)
     multiindex_hdf(rmsd, ids, hdf_path, 'rmsd', 't')
@@ -232,17 +236,19 @@ def dump_rmsd(top_path, trj_path, ref_str, out_path=None,
             pickle.dump(rmsd, f)
 
 
-def measure_rmsf(top_path, trj_path, measure, per_res=True,
-                 aln_group='backbone'):
+def measure_rmsf(top_path, trj_path, measure='backbone',
+                 select='protein', per_res=True):
     res = ' -res ' if per_res else ''
-
+    # Get the directory that this file is in.
+    s_path = '/'.join(__file__.split('/')[:-1])
+    cmd = (f"python {s_path}/measure_rmsf.py "
+           f"{top_path} {trj_path} "
+           '/tmp/rmsf.h5 '
+           f"\"{measure}\" \"{select}\" {res}")
     # Measure the RMSF
     try:
 
-        subprocess.run((f"python measure_rmsf.py "
-                        f"{top_path} {trj_path} "
-                        '/tmp/rmsf.h5 '
-                        f"{aln_group} {measure} {res}"),
+        subprocess.run(cmd,
                        shell=True,
                        check=True)
     except subprocess.CalledProcessError as error:
@@ -250,13 +256,13 @@ def measure_rmsf(top_path, trj_path, measure, per_res=True,
               '. Output:', error.output.decode("utf-8"))
 
     df = pd.read_hdf('/tmp/rmsf.h5', key='df', mode='r').reset_index()
-    print(df)
     return df
 
 
-def save_rmsf(ids, top_path, trj_path, hdf_path, measure, per_res=True,
-              align='backbone'):
-    rmsf = measure_rmsd(top_path, trj_path, measure, per_res, aln_group=align)
+def save_rmsf(ids, top_path, trj_path, hdf_path, measure='backbone',
+              select='protein', per_res=True):
+    log('info', 'Running RMSF Calc. for ' + ' '.join(ids))
+    rmsf = measure_rmsf(top_path, trj_path, measure, select, per_res)
     index = 'res' if per_res else 'atom'
     multiindex_hdf(rmsf, ids, hdf_path, 'rmsf', index)
 

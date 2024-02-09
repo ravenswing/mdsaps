@@ -71,7 +71,6 @@ def save_centroid(traj, per_frame, out_name):
     return [index, max_s, distances.mean(), distances.std()]
 
 
-
 if __name__ == "__main__":
     """
     # Define all the systems to work with
