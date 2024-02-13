@@ -333,3 +333,17 @@ def comb_mean_std(N, X, S):
     comb_std = np.sqrt(temp.sum()/N.sum())
 
     return comb_mean, comb_std
+
+
+def atom_numbers(pdb, select, names=None):
+    """ Extract the atom numbers from a topology, based on selection.
+        If names are given, are chained with 'or' to the selection.
+    """
+    # Load the pdb into MDAnalysis
+    u = _init_universe(pdb)
+    # Create the string to pass to select (adding names as a list of 'or's
+    sel_str = f"{select} and (name {' '.join(names)})"
+    # Select the AtomGroup with just the wanted atoms.
+    u = u.select_atoms(sel_str)
+    # Pass the IDs (from pdb input) as a list.
+    return list(u.atoms.ids)
