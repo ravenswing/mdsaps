@@ -11,7 +11,7 @@ sys.path.append('/home/rhys/phd_tools/SAPS')
 from load import colvar
 
 
-def import_basins(csv):
+def import_basins(csv: str):
     return {k: b.iloc[:, 2:].values.tolist()
             for k, b in pd.read_csv(csv).groupby('sys')}
 

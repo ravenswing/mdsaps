@@ -15,7 +15,11 @@ import pandas as pd
 import pickle
 import pytraj as pt
 import subprocess
+import multiprocessing
 
+from multiprocessing import Pool
+from functools import partial
+from numbers import Number
 from MDAnalysis.analysis import rms
 from parmed import gromacs, amber, load_file
 from os.path import exists
@@ -299,6 +303,41 @@ def measure_rgyr(top_path, trj_path, selection):
 def save_rgyr(ids, top_path, trj_path, hdf_path, measure, align='backbone'):
     rgyr = measure_rgyr(top_path, trj_path, measure)
     multiindex_hdf(rgyr, ids, hdf_path, 'rgyr', 't')
+
+
+def calc_3D_dist(x1: Number, y1: Number, z1: Number,
+                 x2: Number, y2: Number, z2: Number):
+    return np.sqrt(np.square(x2-x1) + np.square(y2-y1) + np.square(z2-z1))
+
+
+def com_dist(idx, u, atom_groups):
+    u.trajectory[idx]
+    # Split the trajectores to just portal & ligand atoms
+    comA = u.select_atoms(atom_groups[0]).center_of_mass()
+    comB = u.select_atoms(atom_groups[1]).center_of_mass()
+    dist = calc_3D_dist(comA[0], comA[1], comA[2],
+                        comB[0], comB[1], comB[2],)
+    return dist
+
+
+def measure_com_dist(top_path: str, trj_path: str, selectA: str, selectB: str,
+                     indices=None):
+    u = _init_universe([top_path, trj_path])
+    indices = np.arange(u.trajectory.n_frames) if indices is None else indices
+    run_per_frame = partial(com_dist,
+                            u=u,
+                            atom_groups=[selectA, selectB])
+    with Pool(4) as worker_pool:
+        result = worker_pool.map(run_per_frame, indices)
+    result = np.asarray(result).T
+    return pd.DataFrame.from_dict({'t': indices, 'com': result})
+
+
+def save_com_dist(ids: list, top_path: str, trj_path: str, hdf_path: str,
+                  selectA: str, selectB: str, indices=None):
+    log('info', 'Running COM Dist. Calc. for ' + ' '.join(ids))
+    dist = measure_com_dist(top_path, selectA, selectB, indices)
+    multiindex_hdf(dist, ids, hdf_path, 'com', 't')
 
 
 def simple_avg_table(hdf_path, csv=None):
