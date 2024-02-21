@@ -49,7 +49,7 @@ def pocket_select(wd, out_name):
     mpck_cmd = ("mdpocket --trajectory_file aligned.dcd --trajectory_format dcd "
                 f"-f aligned.pdb -o {out_name} -n 3.0")
     try:
-        subprocess.run(mpck_cmd, cwd=f'{wd}', shell=True, check=True)
+        subprocess.run(mpck_cmd, cwd=wd, shell=True, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -65,18 +65,18 @@ for method in ['fun-metaD']:
                 aligned_pdb(wd, ref)
                 aligned_dcd(wd, f"{system}+{pdb}_{rep}_GISMO.xtc", ref)
                 try:
-                    subprocess.run('rm tmp_*', cwd=f'{wd}', shell=True, check=True)
+                    subprocess.run('rm tmp_*', cwd=wd, shell=True, check=True)
                 except subprocess.CalledProcessError as error:
                     print('Error code:', error.returncode,
                         '. Output:', error.output.decode("utf-8"))
                 pocket_select(wd, f"{system}+{pdb}_{rep}")
                 try:
-                    subprocess.run(f'cp *_freq_iso_* {out_dir}', cwd=f'{wd}', shell=True, check=True)
+                    subprocess.run(f'cp *_freq_iso_* {out_dir}', cwd=wd, shell=True, check=True)
                 except subprocess.CalledProcessError as error:
                     print('Error code:', error.returncode,
                         '. Output:', error.output.decode("utf-8"))
                 try:
-                    subprocess.run(f'cp *_atom_pdens* {out_dir}', cwd=f'{wd}', shell=True, check=True)
+                    subprocess.run(f'cp *_atom_pdens* {out_dir}', cwd=wd, shell=True, check=True)
                 except subprocess.CalledProcessError as error:
                     print('Error code:', error.returncode,
                         '. Output:', error.output.decode("utf-8"))
