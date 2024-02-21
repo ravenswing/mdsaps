@@ -1,21 +1,13 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from itertools import chain
 import subprocess
-import sys
-import os
-import re
 import MDAnalysis as mda
-from MDAnalysis import transformations as trans
-from MDAnalysis.analysis import align, rms
-import load
+from MDAnalysis.analysis import align
 import traj_tools as tt
 
 systems = {'a2b1': ['A769', 'PF739', 'SC4', 'MT47', 'MK87'],
            'a2b2': ['A769', 'PF739', 'SC4', 'MT47', 'MK87']}
 
 DATA_DIR = '/home/rhys/Storage/ampk_metad_all_data'
+TMPL_DIR = f"{DATA_DIR}/pockets/cut_templates"
 
 
 def aligned_pdb(wd, ref_path):
@@ -46,8 +38,31 @@ def aligned_dcd(wd, xtc_name, ref_path):
 
 
 def pocket_select(wd, out_name):
-    mpck_cmd = ("mdpocket --trajectory_file aligned.dcd --trajectory_format dcd "
+    mpck_cmd = ("mdpocket --trajectory_file aligned.dcd "
+                "--trajectory_format dcd "
                 f"-f aligned.pdb -o {out_name} -n 3.0")
+    try:
+        subprocess.run(mpck_cmd, cwd=wd, shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+
+
+def pocket_volume(wd, out_name, ref_path):
+
+    try:
+        subprocess.run(f'cp {ref_path} {wd}', shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print('Error code:', error.returncode,
+              '. Output:', error.output.decode("utf-8"))
+
+    mpck_cmd = ("mdpocket "
+                "--trajectory_file aligned.dcd "
+                "--trajectory_format dcd "
+                f"-f aligned.pdb "
+                f"--selected_pocket {ref_path.split('/')[-1]} "
+                f"-o {out_name} "
+                "-n 3.0 -v 10000")
     try:
         subprocess.run(mpck_cmd, cwd=wd, shell=True, check=True)
     except subprocess.CalledProcessError as error:
@@ -62,21 +77,31 @@ for method in ['fun-metaD']:
         for pdb in systems[system]:
             for rep in ['R1', 'R2', 'R3', 'R4']:
                 wd = f"{DATA_DIR}/{method}/{system}+{pdb}/{rep}"
+                """
                 aligned_pdb(wd, ref)
                 aligned_dcd(wd, f"{system}+{pdb}_{rep}_GISMO.xtc", ref)
+
                 try:
                     subprocess.run('rm tmp_*', cwd=wd, shell=True, check=True)
                 except subprocess.CalledProcessError as error:
                     print('Error code:', error.returncode,
-                        '. Output:', error.output.decode("utf-8"))
+                          '. Output:', error.output.decode("utf-8"))
+
                 pocket_select(wd, f"{system}+{pdb}_{rep}")
+
                 try:
-                    subprocess.run(f'cp *_freq_iso_* {out_dir}', cwd=wd, shell=True, check=True)
+                    subprocess.run(f'cp *_freq_iso_* {out_dir}', cwd=wd,
+                                   shell=True, check=True)
                 except subprocess.CalledProcessError as error:
                     print('Error code:', error.returncode,
-                        '. Output:', error.output.decode("utf-8"))
+                          '. Output:', error.output.decode("utf-8"))
                 try:
-                    subprocess.run(f'cp *_atom_pdens* {out_dir}', cwd=wd, shell=True, check=True)
+                    subprocess.run(f'cp *_atom_pdens* {out_dir}', cwd=wd,
+                                   shell=True, check=True)
                 except subprocess.CalledProcessError as error:
                     print('Error code:', error.returncode,
-                        '. Output:', error.output.decode("utf-8"))
+                          '. Output:', error.output.decode("utf-8"))
+                """
+
+                pocket_volume(wd, f"{system}+{pdb}_{rep}_vol",
+                              f"{TMPL_DIR}/{system}+{pdb}_cut.pdb")
