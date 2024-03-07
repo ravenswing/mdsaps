@@ -205,8 +205,7 @@ def autoimage_file(top_file, crd_file):
                   overwrite=True)
 
 
-if __name__ == "main":
-
+def main():
     # lig21
     POCKETS = ['Tunnel-Front', 'Tunnel-Back', 'Active-Site']
     DATA_DIR = ('/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_BECK/'
@@ -218,16 +217,19 @@ if __name__ == "main":
         make_restraints_list(wd,
                              f"complex_ship2_{pocket}+Lig21",
                              f"{DATA_DIR}/SHIP Project - Lig21 Restraints.csv")
-        prepare_min_inputs(wd, restraints=True)
+        # prepare_min_inputs(wd, restraints=True)
 
     # PRODUCTION
     POCKETS = ['Experimental', 'Tunnel-Front', 'Tunnel-Back']
     DATA_DIR = '/media/rhys/data1/ship_rhys_2022/holo_uMD/minimisation'
-    SVR_DIR = 'iqtc:/home/g19torces/rhys_running/ship_holo_uMD'
 
     for pocket in POCKETS:
         for path in glob(f"{DATA_DIR}/{pocket.lower()}/*"):
-            FN = f"complex_{path.split('/')[-1]}"
-            make_reducing_restraints(path, '/home/rhys/SHIP/Data/SHIP Project - Restraints.csv')
+            make_reducing_restraints(path,
+                                     '/home/rhys/SHIP/Data/SHIP Project - Restraints.csv')
             transfer(path)
-    #         prepare_min_inputs(path, restraints=True)
+            #  prepare_min_inputs(path, restraints=True)
+
+
+if __name__ == "main":
+    main()

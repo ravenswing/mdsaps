@@ -4,23 +4,9 @@ import MDAnalysis.transformations as trans
 import pandas as pd
 import argparse
 
-parser = argparse.ArgumentParser(
-                    prog='ProgramName',
-                    description='What the program does',
-                    epilog='Text at the bottom of help')
-parser.add_argument('top_path', type=str)
-parser.add_argument('trj_path', type=str)
-parser.add_argument('out_path', type=str)
-parser.add_argument('measure', type=str)
-parser.add_argument('select', type=str)
-parser.add_argument('-res', action="store_true")
-parser.add_argument('-debug', action="store_true", required=False)
-args = parser.parse_args()
-debug = args.debug
-
 
 def measure_rmsf(top_path, trj_path, measure="backbone", select="protein",
-                 per_res=True):
+                 per_res=True, debug=False):
     if debug: print('measure', measure)
     # Load new universe (N.B. TO MEMORY!)
     if debug: print('loading u')
@@ -69,43 +55,62 @@ def measure_rmsf(top_path, trj_path, measure="backbone", select="protein",
     return pd.DataFrame(df.groupby('res').rmsf.mean()) if per_res else df
 
 
-new_data = measure_rmsf(args.top_path,
-                        args.trj_path,
-                        args.measure,
-                        args.select,
-                        args.res)
+def main():
+    parser = argparse.ArgumentParser(
+                        prog='ProgramName',
+                        description='What the program does',
+                        epilog='Text at the bottom of help')
+    parser.add_argument('top_path', type=str)
+    parser.add_argument('trj_path', type=str)
+    parser.add_argument('out_path', type=str)
+    parser.add_argument('measure', type=str)
+    parser.add_argument('select', type=str)
+    parser.add_argument('-res', action="store_true")
+    parser.add_argument('-debug', action="store_true", required=False)
+    args = parser.parse_args()
+    debug = args.debug
 
-if debug: print(f"Writing RMSF data to {args.out_path}")
-new_data.to_hdf(args.out_path, key='df')
+    new_data = measure_rmsf(args.top_path,
+                            args.trj_path,
+                            args.measure,
+                            args.select,
+                            args.res,
+                            debug)
 
-"""
-PREVIOUS METHODOLOGY
+    if debug: print(f"Writing RMSF data to {args.out_path}")
+    new_data.to_hdf(args.out_path, key='df')
+    """
+    PREVIOUS METHODOLOGY
 
-# Rename and stack for MultiIndexing
-new_data.rename(columns={'rmsf': ids[2]}, inplace=True)
-inp_l = pd.concat({ids[1]: new_data}, axis=1)
-inp_s = pd.concat({ids[0]: inp_l}, axis=1)
+    # Rename and stack for MultiIndexing
+    new_data.rename(columns={'rmsf': ids[2]}, inplace=True)
+    inp_l = pd.concat({ids[1]: new_data}, axis=1)
+    inp_s = pd.concat({ids[0]: inp_l}, axis=1)
 
-# Add the data to the HDF stored data:
-# If there is already an hdf file
-if exists(hdf_path):
-    print('Further time --> Reading Files & Adding Data')
-    new = pd.read_hdf(hdf_path, key='df')
-    # Update the values if the data already exists
-    if any([(mi == inp_s.columns)[0] for mi in new.columns]):
-        print("Updating values in DataFrame.")
-        new.update(inp_s)
-    # Or add the new data
+    # Add the data to the HDF stored data:
+    # If there is already an hdf file
+    if exists(hdf_path):
+        print('Further time --> Reading Files & Adding Data')
+        new = pd.read_hdf(hdf_path, key='df')
+        # Update the values if the data already exists
+        if any([(mi == inp_s.columns)[0] for mi in new.columns]):
+            print("Updating values in DataFrame.")
+            new.update(inp_s)
+        # Or add the new data
+        else:
+            print("Adding new values to DataFrame.")
+            new = new.join(inp_s)
+        # Reorder the columns before saving the data
+        new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
+        # Write the new data to the existing file
+        new.to_hdf(hdf_path, key='df')
+    # Or create one
     else:
-        print("Adding new values to DataFrame.")
-        new = new.join(inp_s)
-    # Reorder the columns before saving the data
-    new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
-    # Write the new data to the existing file
-    new.to_hdf(hdf_path, key='df')
-# Or create one
-else:
-    # Make a new hdf file and save the first column of data
-    print('First time --> Creating Files')
-    inp_s.to_hdf(hdf_path, key='df')
-"""
+        # Make a new hdf file and save the first column of data
+        print('First time --> Creating Files')
+        inp_s.to_hdf(hdf_path, key='df')
+    """
+
+
+if __name__ == '__main__':
+    main()

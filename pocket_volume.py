@@ -70,38 +70,43 @@ def pocket_volume(wd, out_name, ref_path):
               '. Output:', error.output.decode("utf-8"))
 
 
-for method in ['fun-metaD']:
-    for system in systems.keys():
-        out_dir = f"/media/rhys/Storage/ampk_metad_all_data/analysis_data/mdpocket/{system}"
-        ref = f"/home/rhys/Storage/ampk_metad_all_data/super_ref/{system}.pdb"
-        for pdb in systems[system]:
-            for rep in ['R1', 'R2', 'R3', 'R4']:
-                wd = f"{DATA_DIR}/{method}/{system}+{pdb}/{rep}"
-                """
-                aligned_pdb(wd, ref)
-                aligned_dcd(wd, f"{system}+{pdb}_{rep}_GISMO.xtc", ref)
+def main():
+    for method in ['fun-metaD']:
+        for system in systems.keys():
+            out_dir = f"/media/rhys/Storage/ampk_metad_all_data/analysis_data/mdpocket/{system}"
+            ref = f"/home/rhys/Storage/ampk_metad_all_data/super_ref/{system}.pdb"
+            for pdb in systems[system]:
+                for rep in ['R1', 'R2', 'R3', 'R4']:
+                    wd = f"{DATA_DIR}/{method}/{system}+{pdb}/{rep}"
+                    """
+                    aligned_pdb(wd, ref)
+                    aligned_dcd(wd, f"{system}+{pdb}_{rep}_GISMO.xtc", ref)
 
-                try:
-                    subprocess.run('rm tmp_*', cwd=wd, shell=True, check=True)
-                except subprocess.CalledProcessError as error:
-                    print('Error code:', error.returncode,
-                          '. Output:', error.output.decode("utf-8"))
+                    try:
+                        subprocess.run('rm tmp_*', cwd=wd, shell=True, check=True)
+                    except subprocess.CalledProcessError as error:
+                        print('Error code:', error.returncode,
+                            '. Output:', error.output.decode("utf-8"))
 
-                pocket_select(wd, f"{system}+{pdb}_{rep}")
+                    pocket_select(wd, f"{system}+{pdb}_{rep}")
 
-                try:
-                    subprocess.run(f'cp *_freq_iso_* {out_dir}', cwd=wd,
-                                   shell=True, check=True)
-                except subprocess.CalledProcessError as error:
-                    print('Error code:', error.returncode,
-                          '. Output:', error.output.decode("utf-8"))
-                try:
-                    subprocess.run(f'cp *_atom_pdens* {out_dir}', cwd=wd,
-                                   shell=True, check=True)
-                except subprocess.CalledProcessError as error:
-                    print('Error code:', error.returncode,
-                          '. Output:', error.output.decode("utf-8"))
-                """
+                    try:
+                        subprocess.run(f'cp *_freq_iso_* {out_dir}', cwd=wd,
+                                    shell=True, check=True)
+                    except subprocess.CalledProcessError as error:
+                        print('Error code:', error.returncode,
+                            '. Output:', error.output.decode("utf-8"))
+                    try:
+                        subprocess.run(f'cp *_atom_pdens* {out_dir}', cwd=wd,
+                                    shell=True, check=True)
+                    except subprocess.CalledProcessError as error:
+                        print('Error code:', error.returncode,
+                            '. Output:', error.output.decode("utf-8"))
+                    """
 
-                pocket_volume(wd, f"{system}+{pdb}_{rep}_vol",
-                              f"{TMPL_DIR}/{system}+{pdb}_cut.pdb")
+                    pocket_volume(wd, f"{system}+{pdb}_{rep}_vol",
+                                  f"{TMPL_DIR}/{system}+{pdb}_cut.pdb")
+
+
+if __name__ == '__main__':
+    main()

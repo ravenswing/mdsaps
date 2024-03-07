@@ -15,7 +15,6 @@ import pandas as pd
 import pickle
 import pytraj as pt
 import subprocess
-import multiprocessing
 
 from multiprocessing import Pool
 from functools import partial

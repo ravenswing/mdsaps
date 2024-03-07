@@ -364,4 +364,3 @@ def dgdt(y, exp_value, ax):
     ax.set_xlim([-5., max(x)+10])
     ax.set_ylim([-25., 5.0])
     ax.grid(alpha=0.3)
-

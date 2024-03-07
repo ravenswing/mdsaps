@@ -202,10 +202,13 @@ def combine_top(prot_top, lig_top, lig_name=None, directory=None):
         f.writelines(str(line) for line in new_top)
 
 
-def run_prep(out_dir, sys, lig, dif_size=False):
-    # Copy the apo pdb
+def run_prep(out_dir, sys, lig=None, dif_size=False, ngroup=None):
+    # AMPK ngroup = 20
+
+    # Copy the input scripts
     try:
-        subprocess.run(['cp', f"{PREP_INPUTS}/prep.sh", out_dir], check=True)
+        subprocess.run(['cp', f"{PREP_INPUTS}/prep_apo.sh", out_dir],
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -219,22 +222,22 @@ def run_prep(out_dir, sys, lig, dif_size=False):
     # and lig in ['A769', 'PF739', 'MT47', 'MK87'] else 22
     # Uncharged system = 17, charged system = 22, with added ions = 24
     # Multiple chains: group_N = 24
-    group_N = 20
-    # Make_ndx command with custom number
-    new_line = (f'echo -e "name {group_N} Protein_LIG \\n q" '
-                f'| $GMX make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx')
-    # Add new line to prep.sh
-    with open(f"{out_dir}/prep.sh", 'r') as f:
-        lines = f.readlines()
-    # Change box min. distance assignment for a2b1 complexes
-    if dif_size and sys == 'a2b1':
-        for i in np.arange(len(lines)):
-            if '-bt dodecahedron' in lines[i]:
-                lines[i] = lines[i].replace('1.2', '1.1')
-                print('CHANGING BOX SIZE')
-    lines.append(new_line)
-    with open(f"{out_dir}/prep.sh", 'w') as f:
-        f.writelines(lines)
+    if ngroup:
+        # Make_ndx command with custom number
+        new_line = (f'echo -e "name {ngroup} Protein_LIG \\n q" '
+                    f'| $GMX make_ndx -f {sys}+{lig}.gro -n i.ndx -o i.ndx')
+        # Add new line to prep.sh
+        with open(f"{out_dir}/prep.sh", 'r') as f:
+            lines = f.readlines()
+        # Change box min. distance assignment for a2b1 complexes
+        if dif_size and sys == 'a2b1':
+            for i in np.arange(len(lines)):
+                if '-bt dodecahedron' in lines[i]:
+                    lines[i] = lines[i].replace('1.2', '1.1')
+                    print('CHANGING BOX SIZE')
+        lines.append(new_line)
+        with open(f"{out_dir}/prep.sh", 'w') as f:
+            f.writelines(lines)
     # Run prep.sh
     # try:
         # sub = subprocess.Popen(f"cd {out_dir}; bash prep.sh",
@@ -246,7 +249,8 @@ def run_prep(out_dir, sys, lig, dif_size=False):
     # except:
         # print('ERROR')
     try:
-        subprocess.run(f"cd {out_dir}; bash prep.sh",
+        subprocess.run('bash prep_apo.sh',
+                       cwd=f"{out_dir}",
                        shell=True,
                        check=True)
     except subprocess.CalledProcessError as error:
@@ -254,31 +258,45 @@ def run_prep(out_dir, sys, lig, dif_size=False):
               '. Output:', error.output.decode("utf-8"))
 
 
-def fix_itp_includes(out_dir, sys,):
-    for s in ['', '2']:
-        with open(f"{out_dir}/{sys}_Protein{s}.itp", 'r') as f:
-            lines = f.readlines()
-        for i in np.arange(len(lines)):
-            if all(x in lines[i] for x in ['include', '/home/rhys']):
-                lines[i] = f'#include "./{lines[i].split("/")[-1]}'
-        with open(f"{out_dir}/{sys}_Protein{s}.itp", 'w+') as f:
-            f.writelines(lines)
+def fix_itp_includes(out_dir, sys, numbered=False):
+    if numbered:
+        for s in ['', '2']:
+            with open(f"{out_dir}/{sys}_Protein{s}.itp", 'r') as f:
+                lines = f.readlines()
+            for i in np.arange(len(lines)):
+                if all(x in lines[i] for x in ['include', '/home/rhys']):
+                    lines[i] = f'#include "./{lines[i].split("/")[-1]}'
+            with open(f"{out_dir}/{sys}_Protein{s}.itp", 'w+') as f:
+                f.writelines(lines)
+    else:
+        for s in ['A', 'B']:
+            with open(f"{out_dir}/{sys}_Protein_chain_{s}.itp", 'r') as f:
+                lines = f.readlines()
+            for i in np.arange(len(lines)):
+                if all(x in lines[i] for x in ['include', '/home/rhys']):
+                    lines[i] = f'#include "./{lines[i].split("/")[-1]}'
+            with open(f"{out_dir}/{sys}_Protein_chain_{s}.itp", 'w+') as f:
+                f.writelines(lines)
 
 
-def setup_minim(dd, sys, lig, REMOTE):
+def setup_minim(dd, sys, lig=None, REMOTE=None):
     try:
         subprocess.run(['mkdir', "-p", f"{dd}/01-Min"], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
+    scripts = ('/home/rhys/phd_tools/simulation_files/'
+               'submission_scripts/Local_Dirs')
     try:
-        subprocess.run(f"cp {SCRIPT_DIR}/01-Min/* {dd}/01-Min/",
+        subprocess.run(f"cp {scripts}/01-Min/* {dd}/01-Min/",
                        shell=True, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
-    files = [f"{sys}+{lig}.top",
-             f"{sys}+{lig}.gro",
+
+    name = f"{sys}+{lig}" if lig else sys
+    files = [f"{name}.top",
+             f"{name}.gro",
              'i.ndx',
              '*.itp']
     for fn in files:
@@ -298,13 +316,14 @@ def setup_minim(dd, sys, lig, REMOTE):
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
-    try:
-        subprocess.run(f"rsync -avzhPu {dd}/01-Min {REMOTE}/{sys}+{lig}/",
-                       check=True,
-                       shell=True)
-    except subprocess.CalledProcessError as error:
-        print('Error code:', error.returncode,
-              '. Output:', error.output.decode("utf-8"))
+    if REMOTE:
+        try:
+            subprocess.run(f"rsync -avzhPu {dd}/01-Min {REMOTE}/{sys}+{lig}/",
+                        check=True,
+                        shell=True)
+        except subprocess.CalledProcessError as error:
+            print('Error code:', error.returncode,
+                '. Output:', error.output.decode("utf-8"))
 
 
 def next_step(ndir):
@@ -581,11 +600,10 @@ def bb_weights(pdb, ligand, out_pdb=None):
     out_file = pdb[:-4]+'_bb.pdb' if not out_pdb else out_pdb
     print(f"WRITING  {out_file}")
     with open(out_file, 'w') as f:
-        f.writelines([l for l in lines if 'DELETORiOUS' not in l])
+        f.writelines([x for x in lines if 'DELETORiOUS' not in x])
 
 
-if __name__ == "__main__":
-
+def main():
     print('started')
     for system in SYSTS:
         for lig in LIGS:
@@ -664,3 +682,8 @@ if __name__ == "__main__":
                 print('Error code:', error.returncode,
                       '. Output:', error.output.decode("utf-8"))
             '''
+
+
+if __name__ == "__main__":
+    main()
+
