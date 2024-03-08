@@ -12,9 +12,6 @@ import numpy as np
 import pandas as pd
 import sys
 import plotly.graph_objects as go
-from glob import glob
-from math import ceil
-from plotly.subplots import make_subplots
 
 sys.path.append('/home/rhys/phd_tools/SAPS')
 import load

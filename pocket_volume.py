@@ -3,12 +3,6 @@ import MDAnalysis as mda
 from MDAnalysis.analysis import align
 import traj_tools as tt
 
-systems = {'a2b1': ['A769', 'PF739', 'SC4', 'MT47', 'MK87'],
-           'a2b2': ['A769', 'PF739', 'SC4', 'MT47', 'MK87']}
-
-DATA_DIR = '/home/rhys/Storage/ampk_metad_all_data'
-TMPL_DIR = f"{DATA_DIR}/pockets/cut_templates"
-
 
 def aligned_pdb(wd, ref_path):
     u = tt._init_universe(f"{wd}/md_dry.pdb")
@@ -38,41 +32,47 @@ def aligned_dcd(wd, xtc_name, ref_path):
 
 
 def pocket_select(wd, out_name):
-    mpck_cmd = ("mdpocket --trajectory_file aligned.dcd "
-                "--trajectory_format dcd "
-                f"-f aligned.pdb -o {out_name} -n 3.0")
+    mpck_cmd = ["mdpocket --trajectory_file aligned.dcd ",
+                "--trajectory_format dcd ",
+                f"-f aligned.pdb -o {out_name} -n 3.0"]
     try:
-        subprocess.run(mpck_cmd, cwd=wd, shell=True, check=True)
+        subprocess.run(mpck_cmd, cwd=wd, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
 
 
 def pocket_volume(wd, out_name, ref_path):
-
+    # TODO -> COPY FILES
     try:
         subprocess.run(f'cp {ref_path} {wd}', shell=True, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
 
-    mpck_cmd = ("mdpocket "
-                "--trajectory_file aligned.dcd "
-                "--trajectory_format dcd "
-                f"-f aligned.pdb "
-                f"--selected_pocket {ref_path.split('/')[-1]} "
-                f"-o {out_name} "
-                "-n 3.0 -v 10000")
+    mpck_cmd = ["mdpocket ",
+                "--trajectory_file aligned.dcd ",
+                "--trajectory_format dcd ",
+                "-f aligned.pdb ",
+                f"--selected_pocket {ref_path.split('/')[-1]} ",
+                f"-o {out_name} ",
+                "-n 3.0 -v 10000"]
     try:
-        subprocess.run(mpck_cmd, cwd=wd, shell=True, check=True)
+        subprocess.run(mpck_cmd, cwd=wd, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
 
 
 def main():
+    systems = {'a2b1': ['A769', 'PF739', 'SC4', 'MT47', 'MK87'],
+               'a2b2': ['A769', 'PF739', 'SC4', 'MT47', 'MK87']}
+
+    DATA_DIR = '/home/rhys/Storage/ampk_metad_all_data'
+    TMPL_DIR = f"{DATA_DIR}/pockets/cut_templates"
+
     for method in ['fun-metaD']:
-        for system in systems.keys():
+        for system in systems:
             out_dir = f"/media/rhys/Storage/ampk_metad_all_data/analysis_data/mdpocket/{system}"
             ref = f"/home/rhys/Storage/ampk_metad_all_data/super_ref/{system}.pdb"
             for pdb in systems[system]:
@@ -90,12 +90,14 @@ def main():
 
                     pocket_select(wd, f"{system}+{pdb}_{rep}")
 
+                    # TODO -> COPY FILES
                     try:
                         subprocess.run(f'cp *_freq_iso_* {out_dir}', cwd=wd,
                                     shell=True, check=True)
                     except subprocess.CalledProcessError as error:
                         print('Error code:', error.returncode,
                             '. Output:', error.output.decode("utf-8"))
+                    # TODO -> COPY FILES
                     try:
                         subprocess.run(f'cp *_atom_pdens* {out_dir}', cwd=wd,
                                     shell=True, check=True)

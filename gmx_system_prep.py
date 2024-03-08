@@ -18,17 +18,6 @@ import pytraj as pt
 from traj_tools import format_pdb
 
 
-PREP_INPUTS = ('/home/rhys/phd_tools/simulation_files/'
-               'submission_scripts/Local_Dirs/00-Prep')
-OUT_DIR = '/home/rhys/Storage/ampk_metad_all_data'
-#PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
-SCRIPT_DIR = ('/home/rhys/phd_tools/simulation_files/'
-              'submission_scripts/MareNostrum/class_a')
-REMOTE = 'mn:/home/ub183/ub183944/scratch/ampk_replicas'
-
-SYSTS = ['a2b1', 'a2b2']
-LIGS = ['A769']
-# LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
 
 
 def make_dirs(name, sys, lig):
@@ -604,6 +593,18 @@ def bb_weights(pdb, ligand, out_pdb=None):
 
 
 def main():
+    PREP_INPUTS = ('/home/rhys/phd_tools/simulation_files/'
+                   'submission_scripts/Local_Dirs/00-Prep')
+
+    OUT_DIR = '/home/rhys/Storage/ampk_metad_all_data'
+    #PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
+    SCRIPT_DIR = ('/home/rhys/phd_tools/simulation_files/'
+                  'submission_scripts/MareNostrum/class_a')
+    REMOTE = 'mn:/home/ub183/ub183944/scratch/ampk_replicas'
+
+    SYSTS = ['a2b1', 'a2b2']
+    LIGS = ['A769']
+    # LIGS = ['SC4', 'PF739', 'MT47', 'MK87']
     print('started')
     for system in SYSTS:
         for lig in LIGS:

@@ -6,13 +6,8 @@
     - sumhills
 """
 
-import numpy as np
 import pandas as pd
-import pickle
 import subprocess
-import sys
-
-import traj_tools as tt
 import load
 
 
@@ -39,13 +34,13 @@ def run_sumhills(wd, out_name, stride=None, cv=None):
     else:
         cv_flag = ''
     # Construct plumed command
-    cmd = (f"plumed sum_hills --hills {wd}/HILLS "
-           f"--outfile {wd}/{out_name}_FES --mintozero {st_flag} {cv_flag}")
+    cmd = ['plumed sum_hills',
+           f"--hills {wd}/HILLS"
+           f"--outfile {wd}/{out_name}_FES",
+           f"--mintozero {st_flag} {cv_flag}"]
     # Execute the plumed sum_hills command
     try:
-        subprocess.run(cmd,
-                       shell=True,
-                       check=True)
+        subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -58,18 +53,16 @@ def cut_traj(trj_path, tpr, out_path, dt=100, ndx='i.ndx'):
     out_path = out_path if '/' in out_path else '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
     ndx = ndx if '/' in ndx else '/'.join(trj_path.split('/')[:-1]) + '/' + ndx
     # Create the trjconv command from user input
-    cmd = ("echo Backbone Protein_LIG | gmx_mpi trjconv "
-           f"-s {tpr} "
-           f"-f {trj_path} "
-           f"-o {out_path} "
-           f"-n {ndx} "
-           "-fit rot+trans "
-           f"-dt {dt} ")
+    cmd = ["echo Backbone Protein_LIG | gmx_mpi trjconv ",
+           f"-s {tpr} ",
+           f"-f {trj_path} ",
+           f"-o {out_path} ",
+           f"-n {ndx} ",
+           "-fit rot+trans ",
+           f"-dt {dt} "]
     # Run the trjconv command
     try:
-        subprocess.run(cmd,
-                       shell=True,
-                       check=True)
+        subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -226,43 +219,41 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
         out_path = '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
     # Step 1: -pbc whole, produces tmp1.xtc
     try:
-        subprocess.run((f"echo {out_group} | gmx_mpi trjconv "
-                        f"-f {trj_path} "
-                        f"-s {tpr} "
-                        f"-n {ndx} "
-                        "-o /tmp/tmp1.xtc "
-                        '-pbc whole '),
-                       check=True,
-                       shell=True)
+        subprocess.run([f"echo {out_group} | gmx_mpi trjconv ",
+                        f"-f {trj_path} ",
+                        f"-s {tpr} ",
+                        f"-n {ndx} ",
+                        "-o /tmp/tmp1.xtc ",
+                        '-pbc whole '],
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # Step 2: -pbc cluster, produces tmp2.xtc
     try:
-        subprocess.run((f"echo Protein {out_group} | gmx_mpi trjconv "
-                        "-f /tmp/tmp1.xtc "
-                        f"-s {tpr} "
-                        f"-n {ndx} "
-                        "-o /tmp/tmp2.xtc "
-                        '-pbc cluster '),
-                       check=True,
-                       shell=True)
+        subprocess.run([f"echo Protein {out_group} | gmx_mpi trjconv ",
+                        "-f /tmp/tmp1.xtc ",
+                        f"-s {tpr} ",
+                        f"-n {ndx} ",
+                        "-o /tmp/tmp2.xtc ",
+                        '-pbc cluster '],
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # run trjconv to produce a readable output
     try:
-        subprocess.run((f"echo Protein {out_group} | gmx_mpi trjconv "
-                        f"-f /tmp/tmp2.xtc "
-                        f"-s {tpr} "
-                        f"-n {ndx} "
-                        f"-o {out_path} "
-                        '-pbc mol -ur compact -center'),
-                       check=True,
-                       shell=True)
+        subprocess.run([f"echo Protein {out_group} | gmx_mpi trjconv ",
+                        '-f /tmp/tmp2.xtc ',
+                        f"-s {tpr} ",
+                        f"-n {ndx} ",
+                        f"-o {out_path} ",
+                        '-pbc mol -ur compact -center'],
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
+    # TODO -> REMOVE FILE
     # Remove temp xtc files if necessary
     subprocess.run("rm /tmp/*.xtc", shell=True)
 
@@ -276,11 +267,10 @@ def concat_traj(directory, out_path='full_traj.xtc'):
     # todo: check that all the names of the inputs are the same:
     #       i.e. there are not name.part000*.xtc AND name.xtc
     try:
-        subprocess.run(("gmx_mpi trjcat "
-                        f"-f {directory}/*.{ext} "
-                        f"-o {directory}/{out_path} "),
-                       check=True,
-                       shell=True)
+        subprocess.run(["gmx_mpi trjcat ",
+                        f"-f {directory}/*.{ext} ",
+                        f"-o {directory}/{out_path} "],
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))

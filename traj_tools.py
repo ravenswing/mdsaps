@@ -9,13 +9,13 @@
     N.B. Requires ambertools (PyTraj & Parmed) for file conv.
 """
 
+import logging
 import MDAnalysis as mda
 import numpy as np
 import pandas as pd
 import pickle
 import pytraj as pt
 import subprocess
-
 from multiprocessing import Pool
 from functools import partial
 from numbers import Number
@@ -23,12 +23,13 @@ from MDAnalysis.analysis import rms
 from parmed import gromacs, amber, load_file
 from os.path import exists
 
-
-def log(level, message):
-    print(f"{level.upper(): <6} | {message}")
+logging.basicConfig(level=logging.INFO,
+                    format='[%(levelname)s] %(asctime)s - %(message)s')
+log = logging.getLogger()
 
 
 def _process_atm_nm(name):
+    log.debug(f'Atom Name: |{name}|')
     # Full length names are left unchanged
     if len(name) == 4:
         return name
@@ -74,6 +75,7 @@ def format_pdb(info, chain=False):
                 f"{temprt:>6.2f}          "
                 f"{elemnt:>2}"
                 f"{charge}\n")
+    log.debug(f'Format PBD: |{new_line}')
 
     # Return the new line
     return new_line
@@ -191,15 +193,14 @@ def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
 
     # If there is already an hdf file...
     if exists(hdf_path):
-        log('info', 'HDF Exists --> Reading File & Adding Data')
         new = pd.read_hdf(hdf_path, key='df')
         # ...and the column exists, update the values.
         if any([(mi == df.columns)[0] for mi in new.columns]):
-            log('info', "Updating values in DataFrame.")
+            log.info('HDF Exists -> Updating values in DataFrame.')
             new.update(df)
         # ...and the data is new, add the new data.
         else:
-            log('info', "Adding new values to DataFrame.")
+            log.info('HDF Exists -> Adding new values to DataFrame.')
             new = new.join(df)
         # Reorder the columns before saving the data.
         new = new.iloc[:, new.columns.sortlevel(0, sort_remaining=True)[1]]
@@ -208,13 +209,13 @@ def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
     # But if there is not a file already...
     else:
         # ... make a new hdf file and save the first column of data.
-        log('info', 'No HDF Found --> Creating File')
+        log.info('No HDF Found -> Creating File')
         df.to_hdf(hdf_path, key='df')
 
 
 def save_rmsd(ids, top_path, trj_path, hdf_path, measure,
               ref_path=None, align='backbone'):
-    log('info', 'Running RMSD Calc. for ' + ' '.join(ids))
+    log.info(f"Running RMSD Calc. for {' '.join(ids)}")
     rmsd = measure_rmsd(top_path, trj_path, ref_path,
                         [measure], aln_group=align)
     multiindex_hdf(rmsd, ids, hdf_path, 'rmsd', 't')
@@ -244,16 +245,13 @@ def measure_rmsf(top_path, trj_path, measure='backbone',
     res = ' -res ' if per_res else ''
     # Get the directory that this file is in.
     s_path = '/'.join(__file__.split('/')[:-1])
-    cmd = (f"python {s_path}/measure_rmsf.py "
-           f"{top_path} {trj_path} "
-           '/tmp/rmsf.h5 '
-           f"\"{measure}\" \"{select}\" {res}")
+    cmd = [f"python {s_path}/measure_rmsf.py ",
+           f"{top_path} {trj_path} ",
+           '/tmp/rmsf.h5 ',
+           f"\"{measure}\" \"{select}\" {res}"]
     # Measure the RMSF
     try:
-
-        subprocess.run(cmd,
-                       shell=True,
-                       check=True)
+        subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -264,7 +262,7 @@ def measure_rmsf(top_path, trj_path, measure='backbone',
 
 def save_rmsf(ids, top_path, trj_path, hdf_path, measure='backbone',
               select='protein', per_res=True):
-    log('info', 'Running RMSF Calc. for ' + ' '.join(ids))
+    log.info(f"Running RMSF Calc. for {' '.join(ids)}")
     rmsf = measure_rmsf(top_path, trj_path, measure, select, per_res)
     index = 'res' if per_res else 'atom'
     multiindex_hdf(rmsf, ids, hdf_path, 'rmsf', index)
@@ -300,6 +298,7 @@ def measure_rgyr(top_path, trj_path, selection):
 
 
 def save_rgyr(ids, top_path, trj_path, hdf_path, measure, align='backbone'):
+    log.info(f"Running Rad. Gyr. Calc. for {' '.join(ids)}")
     rgyr = measure_rgyr(top_path, trj_path, measure)
     multiindex_hdf(rgyr, ids, hdf_path, 'rgyr', 't')
 
@@ -334,7 +333,7 @@ def measure_com_dist(top_path: str, trj_path: str, selectA: str, selectB: str,
 
 def save_com_dist(ids: list, top_path: str, trj_path: str, hdf_path: str,
                   selectA: str, selectB: str, indices=None):
-    log('info', 'Running COM Dist. Calc. for ' + ' '.join(ids))
+    log.info(f"Running COM Dist. Calc. for {' '.join(ids)}")
     dist = measure_com_dist(top_path, selectA, selectB, indices)
     multiindex_hdf(dist, ids, hdf_path, 'com', 't')
 
@@ -379,8 +378,9 @@ def atom_numbers(pdb, select, names=None):
     """
     # Load the pdb into MDAnalysis
     u = _init_universe(pdb)
-    # Create the string to pass to select (adding names as a list of 'or's
+    # Create the string to pass to select (adding names as a list of 'or's).
     sel_str = f"{select} and (name {' '.join(names)})"
+    log.debug(f"Select str used: {sel_str}")
     # Select the AtomGroup with just the wanted atoms.
     u = u.select_atoms(sel_str)
     # Pass the IDs (from pdb input) as a list.

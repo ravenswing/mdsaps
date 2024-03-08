@@ -16,9 +16,6 @@ import pytraj as pt
 import subprocess
 from glob import glob
 
-SCRIPT_DIR = ("/home/rhys/phd_tools/simulation_files/"
-              "submission_scripts/Amber/md")
-
 
 def _run_tleap(wd, input_file):
     # Print a starting message
@@ -210,6 +207,9 @@ def main():
     POCKETS = ['Tunnel-Front', 'Tunnel-Back', 'Active-Site']
     DATA_DIR = ('/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_BECK/'
                 'SHIP_uMD_Prep/Lig21_uMD')
+
+    SCRIPT_DIR = ("/home/rhys/phd_tools/simulation_files/"
+                  "submission_scripts/Amber/md")
 
     # MINIMISATION
     for pocket in POCKETS:
