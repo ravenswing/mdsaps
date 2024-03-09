@@ -18,8 +18,6 @@ import pytraj as pt
 from traj_tools import format_pdb
 
 
-
-
 def make_dirs(name, sys, lig):
     # Make the working directory
     try:
@@ -76,7 +74,7 @@ def run_tleap(wd, lig, pdb_path, PARM_DIR):
     with open('./temp.tleap', 'w+') as f:
         f.write('\n'.join([ffi_lines, lig_lines,
                            pdb_lines, out_lines, 'quit']))
-
+    # TODO -> remove file
     try:
         subprocess.run(['rm', './leap.log'], check=True)
     except subprocess.CalledProcessError as error:
@@ -84,7 +82,7 @@ def run_tleap(wd, lig, pdb_path, PARM_DIR):
               '. Output:', error.output.decode("utf-8"))
 
     try:
-        subprocess.run(['tleap', '-f ./temp.tleap'], check=True)
+        subprocess.run(['tleap', '-f', './temp.tleap'], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -98,15 +96,14 @@ def run_parmed(prmtop, crd, out_path):
 
 def run_pdb2gmx(pdb_file, out_name):
     try:
-        subprocess.run(("gmx_mpi pdb2gmx "
-                        f"-f {pdb_file} "
-                        f"-o {out_name}.gro "
-                        f"-p {out_name}.top "
-                        f"-i {out_name}_posre.itp "
-                        "-ff amber14sb_gmx_s2p "
-                        "-water tip3p "
-                        "-ignh"),
-                       shell=True,
+        subprocess.run(["gmx_mpi", "pdb2gmx",
+                        "-f", pdb_file,
+                        "-o", f"{out_name}.gro",
+                        "-p", f"{out_name}.top",
+                        "-i", f"{out_name}_posre.itp",
+                        "-ff", "amber14sb_gmx_s2p",
+                        "-water", "tip3p",
+                        "-ignh"],
                        check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
@@ -194,6 +191,7 @@ def combine_top(prot_top, lig_top, lig_name=None, directory=None):
 def run_prep(out_dir, sys, lig=None, dif_size=False, ngroup=None):
     # AMPK ngroup = 20
 
+    # TODO -> copy files
     # Copy the input scripts
     try:
         subprocess.run(['cp', f"{PREP_INPUTS}/prep_apo.sh", out_dir],
@@ -227,20 +225,9 @@ def run_prep(out_dir, sys, lig=None, dif_size=False, ngroup=None):
         lines.append(new_line)
         with open(f"{out_dir}/prep.sh", 'w') as f:
             f.writelines(lines)
-    # Run prep.sh
-    # try:
-        # sub = subprocess.Popen(f"cd {out_dir}; bash prep.sh",
-                               # stdout=subprocess.PIPE,
-                               # stderr=subprocess.STDOUT,
-                               # shell=True
-                               # )
-        # out, errors = sub.communicate()
-    # except:
-        # print('ERROR')
     try:
-        subprocess.run('bash prep_apo.sh',
+        subprocess.run(['bash', 'prep_apo.sh'],
                        cwd=f"{out_dir}",
-                       shell=True,
                        check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
@@ -269,6 +256,7 @@ def fix_itp_includes(out_dir, sys, numbered=False):
 
 
 def setup_minim(dd, sys, lig=None, REMOTE=None):
+    # TODO -> Make Dir
     try:
         subprocess.run(['mkdir', "-p", f"{dd}/01-Min"], check=True)
     except subprocess.CalledProcessError as error:
@@ -276,6 +264,7 @@ def setup_minim(dd, sys, lig=None, REMOTE=None):
               '. Output:', error.output.decode("utf-8"))
     scripts = ('/home/rhys/phd_tools/simulation_files/'
                'submission_scripts/Local_Dirs')
+    # TODO -> Copy Files
     try:
         subprocess.run(f"cp {scripts}/01-Min/* {dd}/01-Min/",
                        shell=True, check=True)
@@ -289,6 +278,7 @@ def setup_minim(dd, sys, lig=None, REMOTE=None):
              'i.ndx',
              '*.itp']
     for fn in files:
+        # TODO -> Copy Files
         try:
             subprocess.run(f"cp {dd}/00-Prep/{fn} {dd}/01-Min/",
                            check=True,
@@ -296,6 +286,7 @@ def setup_minim(dd, sys, lig=None, REMOTE=None):
         except subprocess.CalledProcessError as error:
             print('Error code:', error.returncode,
                   '. Output:', error.output.decode("utf-8"))
+    # TODO -> Copy Files
     try:
         subprocess.run(('cp -r '
                         '/home/rhys/phd_tools/'
@@ -307,22 +298,23 @@ def setup_minim(dd, sys, lig=None, REMOTE=None):
               '. Output:', error.output.decode("utf-8"))
     if REMOTE:
         try:
-            subprocess.run(f"rsync -avzhPu {dd}/01-Min {REMOTE}/{sys}+{lig}/",
-                        check=True,
-                        shell=True)
+            subprocess.run(["rsync", "-avzhPu",
+                            f"{dd}/01-Min",
+                            f"{REMOTE}/{sys}+{lig}/"],
+                           check=True)
         except subprocess.CalledProcessError as error:
             print('Error code:', error.returncode,
-                '. Output:', error.output.decode("utf-8"))
+                  '. Output:', error.output.decode("utf-8"))
 
 
 def next_step(ndir):
     for sys in SYSTS:
         for lig in LIGS:
             try:
-                subprocess.run((f"rsync -avzhPu {SCRIPT_DIR}/{ndir}"
-                                f"{REMOTE}/{sys}+{lig}/"),
-                               check=True,
-                               shell=True)
+                subprocess.run(["rsync", "-avzhPu",
+                                f"{SCRIPT_DIR}/{ndir}",
+                                f"{REMOTE}/{sys}+{lig}/"],
+                               check=True)
             except subprocess.CalledProcessError as error:
                 print('Error code:', error.returncode,
                       '. Output:', error.output.decode("utf-8"))
@@ -426,12 +418,12 @@ def make_readable_gro(gro_path, top_path, tpr=None, out_path=None,
         tmp_tpr = '/tmp/tmp.tpr'
         # run grompp to create tmp.tpr
         try:
-            subprocess.run(("gmx_mpi grompp "
-                            f"-f {tmp_mdp} "
-                            f"-c {gro_path} -p {top_path} "
-                            f"-o {tmp_tpr}"),
-                           check=True,
-                           shell=True)
+            subprocess.run(["gmx_mpi", "grompp",
+                            "-f", tmp_mdp,
+                            "-c", gro_path,
+                            "-p", top_path,
+                            "-o", tmp_tpr],
+                           check=True)
         except subprocess.CalledProcessError as error:
             print('Error code:', error.returncode,
                   '. Output:', error.output.decode("utf-8"))
@@ -445,6 +437,7 @@ def make_readable_gro(gro_path, top_path, tpr=None, out_path=None,
         out_path = (f"{'/'.join(gro_path.split('/')[:-1])}/"
                     f"Readable_{gro_path.split('/')[-1]}")
 
+    # TODO -> TEST whether echo works without shell!
     # If the -center option is not enough, use brute force
     if reconstruct:
         # Step 1: -pbc whole, produces tmp1.gro
@@ -488,9 +481,11 @@ def make_readable_gro(gro_path, top_path, tpr=None, out_path=None,
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
+    # TODO -> Remove files
     # Remove temp tpr if necessary
     if rm_tpr:
         subprocess.run(f"rm {tmp_tpr}", shell=True)
+    # TODO -> Remove files
     # Remove temp gro files if necessary
     if rm_gro:
         subprocess.run("rm /tmp/*.gro", shell=True)

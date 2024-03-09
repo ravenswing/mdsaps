@@ -32,9 +32,12 @@ def aligned_dcd(wd, xtc_name, ref_path):
 
 
 def pocket_select(wd, out_name):
-    mpck_cmd = ["mdpocket --trajectory_file aligned.dcd ",
-                "--trajectory_format dcd ",
-                f"-f aligned.pdb -o {out_name} -n 3.0"]
+    mpck_cmd = ["mdpocket",
+                "--trajectory_file", "aligned.dcd ",
+                "--trajectory_format", "dcd",
+                "-f", "aligned.pdb",
+                "-o",  f"{out_name}",
+                "-n" "3.0"]
     try:
         subprocess.run(mpck_cmd, cwd=wd, check=True)
     except subprocess.CalledProcessError as error:
@@ -50,13 +53,14 @@ def pocket_volume(wd, out_name, ref_path):
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
 
-    mpck_cmd = ["mdpocket ",
-                "--trajectory_file aligned.dcd ",
-                "--trajectory_format dcd ",
-                "-f aligned.pdb ",
-                f"--selected_pocket {ref_path.split('/')[-1]} ",
-                f"-o {out_name} ",
-                "-n 3.0 -v 10000"]
+    mpck_cmd = ["mdpocket",
+                "--trajectory_file", "aligned.dcd",
+                "--trajectory_format", "dcd ",
+                "-f", "aligned.pdb",
+                "--selected_pocket", f"{ref_path.split('/')[-1]}",
+                "-o", out_name,
+                "-n", "3.0",
+                "-v", "10000"]
     try:
         subprocess.run(mpck_cmd, cwd=wd, check=True)
     except subprocess.CalledProcessError as error:

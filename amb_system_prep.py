@@ -22,9 +22,8 @@ def _run_tleap(wd, input_file):
     print(f"STARTING  | TLEAP with input:  {input_file}")
     # Run TLEAP
     try:
-        o = subprocess.run(f"tleap -f {wd}/{input_file}",
-                           shell=True, check=True,
-                           capture_output=True, text=True)
+        o = subprocess.run(["tleap", "-f", f"{wd}/{input_file}"],
+                           check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -68,9 +67,10 @@ def setup_minimisation(wd, pdb_filename, nm_pos_in_path, restraints=False):
     if restraints:
         SCRIPT_DIR += "_restraints"
     # Copy the templates to the working directory
+    # TODO -> Copy files
     try:
-        subprocess.run(' '.join(['cp', f"{SCRIPT_DIR}/min*", wd+'/']),
-                       shell=True, check=True)
+        subprocess.run(['cp', f"{SCRIPT_DIR}/min*", wd+'/'],
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -137,7 +137,7 @@ def make_restraints_list(wd, txt_in):
 def run_minimisation(wd):
     # Exectute the bash script for minimisation
     try:
-        subprocess.run(' '.join(['bash', f"{wd}/minim.sh"]), check=True)
+        subprocess.run(['bash', f"{wd}/minim.sh"], check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -175,10 +175,10 @@ def transfer(wd):
     path = '/'.join(wd.split('/')[-2:])
     print(path)
     try:
-        subprocess.run(' '.join(['rsync -avzhPu',
-                                 f"{wd}/restraints_k*",
-                                 f"{SVR_DIR}/{path}/"]),
-                       shell=True, check=True)
+        subprocess.run(['rsync' '-avzhPu',
+                        f"{wd}/restraints_k*",
+                        f"{SVR_DIR}/{path}/"],
+                       check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))

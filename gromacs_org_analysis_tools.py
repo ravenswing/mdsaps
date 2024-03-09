@@ -25,6 +25,7 @@ def run_sumhills(wd, out_name, stride=None, cv=None):
     """
     # Create FESs over time is stride is provided
     if stride is not None:
+        # TODO -> Make dirs
         # Make a new directory to hold output
         subprocess.run(f"mkdir -p {wd}/fes", shell=True, check=True)
         # Adjust output name for new directory
@@ -60,13 +61,14 @@ def cut_traj(trj_path, tpr, out_path, dt=100, ndx='i.ndx'):
     out_path = out_path if '/' in out_path else '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
     ndx = ndx if '/' in ndx else '/'.join(trj_path.split('/')[:-1]) + '/' + ndx
     # Create the trjconv command from user input
-    cmd = ["echo Backbone Protein_LIG | gmx_mpi trjconv ",
-           f"-s {tpr} ",
-           f"-f {trj_path} ",
-           f"-o {out_path} ",
-           f"-n {ndx} ",
-           "-fit rot+trans ",
-           f"-dt {dt} "]
+    cmd = ["echo", "Backbone", "Protein_LIG", "|",
+           "gmx_mpi", "trjconv ",
+           "-s", tpr,
+           "-f", trj_path,
+           "-o", out_path,
+           "-n", ndx,
+           "-dt", dt,
+           "-fit", "rot+trans"]
     # Run the trjconv command
     try:
         subprocess.run(cmd, check=True)
@@ -226,36 +228,39 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
         out_path = '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
     # Step 1: -pbc whole, produces tmp1.xtc
     try:
-        subprocess.run([f"echo {out_group} | gmx_mpi trjconv ",
-                        f"-f {trj_path} ",
-                        f"-s {tpr} ",
-                        f"-n {ndx} ",
-                        "-o /tmp/tmp1.xtc ",
-                        '-pbc whole '],
+        subprocess.run(["echo", f"{out_group}", "|",
+                        "gmx_mpi", "trjconv",
+                        "-f", trj_path,
+                        "-s", tpr,
+                        "-n", ndx,
+                        "-o", "/tmp/tmp1.xtc",
+                        "-pbc", "whole"],
                        check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # Step 2: -pbc cluster, produces tmp2.xtc
     try:
-        subprocess.run([f"echo Protein {out_group} | gmx_mpi trjconv ",
-                        "-f /tmp/tmp1.xtc ",
-                        f"-s {tpr} ",
-                        f"-n {ndx} ",
-                        "-o /tmp/tmp2.xtc ",
-                        '-pbc cluster '],
+        subprocess.run(["echo", "Protein", f"{out_group}", "|",
+                        "gmx_mpi", "trjconv",
+                        "-f", "/tmp/tmp1.xtc",
+                        "-s", tpr,
+                        "-n", ndx,
+                        "-o", "/tmp/tmp2.xtc",
+                        "-pbc", "cluster"],
                        check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # run trjconv to produce a readable output
     try:
-        subprocess.run([f"echo Protein {out_group} | gmx_mpi trjconv ",
-                        '-f /tmp/tmp2.xtc ',
-                        f"-s {tpr} ",
-                        f"-n {ndx} ",
-                        f"-o {out_path} ",
-                        '-pbc mol -ur compact -center'],
+        subprocess.run(["echo", "Protein", f"{out_group}", "|",
+                        "gmx_mpi", "trjconv",
+                        "-f", "/tmp/tmp2.xtc",
+                        "-s", tpr,
+                        "-n", ndx,
+                        "-o", out_path,
+                        "-pbc", "mol", "-ur", "compact", "-center"],
                        check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
@@ -274,9 +279,9 @@ def concat_traj(directory, out_path='full_traj.xtc'):
     # todo: check that all the names of the inputs are the same:
     #       i.e. there are not name.part000*.xtc AND name.xtc
     try:
-        subprocess.run(["gmx_mpi trjcat ",
-                        f"-f {directory}/*.{ext} ",
-                        f"-o {directory}/{out_path} "],
+        subprocess.run(["gmx_mpi", "trjcat ",
+                        "-f", f"{directory}/*.{ext}",
+                        "-o", f"{directory}/{out_path}"],
                        check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
@@ -286,6 +291,7 @@ def concat_traj(directory, out_path='full_traj.xtc'):
 def snapshot_pdbs(trj_path, tpr, snapshots, ns=True, ref_str=None):
     tpr = tpr if '/' in tpr else '/'.join(trj_path.split('/')[:-1]) + '/' + tpr
     out_path = '/'.join(trj_path.split('/')[:-1]) + '/snapshots'
+    # TODO -> Make Dirs
     # Make the directory for the output
     try:
         subprocess.run(f"mkdir -p {out_path}",
@@ -298,12 +304,13 @@ def snapshot_pdbs(trj_path, tpr, snapshots, ns=True, ref_str=None):
     for ts in snapshots:
         ts = ts*1000 if ns else ts
         try:
-            subprocess.run(('echo 0 | gmx_mpi trjconv '
-                            f"-f {trj_path} "
-                            f"-s {tpr} "
-                            f"-o {out_path}/{stem}_{ts}.pdb "
-                            f"-dump {ts}"),
-                           shell=True, check=True)
+            subprocess.run(["echo", 0, "|",
+                            "gmx_mpi", "trjconv",
+                            "-f", trj_path,
+                            "-s", tpr,
+                            "-o", f"{out_path}/{stem}_{ts}.pdb",
+                            "-dump", ts],
+                           check=True)
         except subprocess.CalledProcessError as error:
             print('Error code:', error.returncode,
                   '. Output:', error.output.decode("utf-8"))

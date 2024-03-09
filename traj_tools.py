@@ -245,10 +245,10 @@ def measure_rmsf(top_path, trj_path, measure='backbone',
     res = ' -res ' if per_res else ''
     # Get the directory that this file is in.
     s_path = '/'.join(__file__.split('/')[:-1])
-    cmd = [f"python {s_path}/measure_rmsf.py ",
-           f"{top_path} {trj_path} ",
-           '/tmp/rmsf.h5 ',
-           f"\"{measure}\" \"{select}\" {res}"]
+    cmd = ["python", f"{s_path}/measure_rmsf.py",
+           top_path, trj_path,
+           '/tmp/rmsf.h5',
+           f"\"{measure}\"", f"\"{select}\"", res]
     # Measure the RMSF
     try:
         subprocess.run(cmd, check=True)

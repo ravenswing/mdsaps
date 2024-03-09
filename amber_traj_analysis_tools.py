@@ -53,7 +53,8 @@ def _run_cpptraj(directory, input_file):
     print(f"STARTING  | CPPTRAJ with input:  {input_file}")
     # Run CPPTRAJ
     try:
-        subprocess.run(f"cpptraj -i {directory}/{input_file}",
+        subprocess.run(["cpptraj",
+                        "-i", f"{directory}/{input_file}"],
                        shell=True, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
@@ -126,6 +127,7 @@ def align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
 
 def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
     # Make the directory for the output
+    # TODO -> Make dir
     try:
         subprocess.run(f"mkdir -p {directory}/snapshots/",
                        shell=True, check=True)
