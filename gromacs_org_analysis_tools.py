@@ -6,9 +6,15 @@
     - sumhills
 """
 
+import logging
 import pandas as pd
 import subprocess
+
 import load
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='[%(levelname)s] %(asctime)s - %(message)s')
+log = logging.getLogger()
 
 
 def run_sumhills(wd, out_name, stride=None, cv=None):
@@ -24,23 +30,24 @@ def run_sumhills(wd, out_name, stride=None, cv=None):
         # Adjust output name for new directory
         out_name = f'fes/{out_name}'
         # Add flag for plumed command
-        st_flag = f" --stride {stride}"
+        st_flags = ["--stride", f"{stride}"]
     else:
-        st_flag = ''
+        st_flags = []
     # Create 1D FES if cv is specified
     if cv is not None:
         # Add flag for plumed command (assuming 300K!)
-        cv_flag = f"--idw {cv} --kt 2.49"
+        cv_flags = ["--idw", f"{cv}", "--kt", " 2.49"]
     else:
-        cv_flag = ''
+        cv_flags = []
     # Construct plumed command
-    cmd = ['plumed sum_hills',
-           f"--hills {wd}/HILLS"
-           f"--outfile {wd}/{out_name}_FES",
-           f"--mintozero {st_flag} {cv_flag}"]
+    cmd = ['plumed', 'sum_hills',
+           "--hills", f"{wd}/HILLS",
+           "--outfile", f"{wd}/{out_name}_FES",
+           "--mintozero"] + st_flags + cv_flags
+    print(f"{' '.join(cmd)}")
     # Execute the plumed sum_hills command
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
