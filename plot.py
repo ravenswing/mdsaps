@@ -223,7 +223,7 @@ def cvs(colvar_path, save_path, cvs, units='A', title='CV Diffusion',
     colvar = load.colvar(f"{colvar_path}")
     N = len(list(cvs.keys()))
     fig, ax = plt.subplots(1, N, figsize=(8*N+2, 6), layout='constrained')
-    for i, cv in enumerate(list(cvs.keys())):
+    for i, cv in enumerate(cvs):
         ax[i].scatter(colvar.time.multiply(0.001),
                       colvar[cv].multiply(10),
                       c='#089682', s=8, alpha=.4)
@@ -236,7 +236,7 @@ def cvs(colvar_path, save_path, cvs, units='A', title='CV Diffusion',
 
 
 def diffusion(DIVS, path_frmt, save_frmt, shape, cvs):
-    for cv in list(cvs.keys()):
+    for cv in cvs:
         fig, ax = plt.subplots(shape[0], shape[1],
                                figsize=(shape[1]*8, shape[0]*5),
                                sharey=True, sharex=True)

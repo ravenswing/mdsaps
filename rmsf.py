@@ -11,7 +11,7 @@ def main():
     reps = ['R'+str(x) for x in np.arange(4)+1]
 
     hdf_path = f"{DATA_DIR}/analysis_data/{method}_rmsf.h5"
-    for system in systems.keys():
+    for system in systems:
         for pdb in systems[system]:
             for rep in reps:
                 wd = f"{DATA_DIR}/{method}/{system}+{pdb}/{rep}"
