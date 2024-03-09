@@ -23,6 +23,7 @@ from MDAnalysis.analysis import rms
 from parmed import gromacs, amber, load_file
 from os.path import exists
 
+# TODO -> fix and upgrade basic logger
 logging.basicConfig(level=logging.INFO,
                     format='[%(levelname)s] %(asctime)s - %(message)s')
 log = logging.getLogger()
