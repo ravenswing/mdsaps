@@ -12,17 +12,19 @@ import subprocess
 
 import load
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='[%(levelname)s] %(asctime)s - %(message)s')
-log = logging.getLogger()
+log = logging.getLogger(__name__)
+log.info("G.O.A.T. (Gromacs Organisation n' Analysis Tools) Loaded")
 
 
-def run_sumhills(wd, out_name, stride=None, cv=None):
+def run_sumhills(wd, out_name, name='HILLS', stride=None, cv=None):
     """ Outputs:
         - FES
         - FES over time (with stride)
         - 1D FES (with cv)
     """
+    hills_file = f"{wd}/{name}"
+    log.info(f'Running Sum_hills for {hills_file}')
+
     # Create FESs over time is stride is provided
     if stride is not None:
         # TODO -> Make dirs
@@ -34,18 +36,17 @@ def run_sumhills(wd, out_name, stride=None, cv=None):
         st_flags = ["--stride", f"{stride}"]
     else:
         st_flags = []
-    # Create 1D FES if cv is specified
-    if cv is not None:
-        # Add flag for plumed command (assuming 300K!)
-        cv_flags = ["--idw", f"{cv}", "--kt", " 2.49"]
-    else:
-        cv_flags = []
+
+    # Create 1D FES if cv is specified, add flag for plumed command (300K!)
+    cv_flags = ["--idw", f"{cv}", "--kt", "2.49"] if cv is not None else []
+
     # Construct plumed command
     cmd = ['plumed', 'sum_hills',
-           "--hills", f"{wd}/HILLS",
+           "--hills", hills_file,
            "--outfile", f"{wd}/{out_name}_FES",
            "--mintozero"] + st_flags + cv_flags
-    print(f"{' '.join(cmd)}")
+    log.debug(f"{' '.join(cmd)}")
+
     # Execute the plumed sum_hills command
     try:
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
@@ -60,6 +61,7 @@ def cut_traj(trj_path, tpr, out_path, dt=100, ndx='i.ndx'):
     tpr = tpr if '/' in tpr else '/'.join(trj_path.split('/')[:-1]) + '/' + tpr
     out_path = out_path if '/' in out_path else '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
     ndx = ndx if '/' in ndx else '/'.join(trj_path.split('/')[:-1]) + '/' + ndx
+    log.info(f"Cutting Trajectory {trj_path.split('/')[-1]}")
     # Create the trjconv command from user input
     cmd = ["echo", "Backbone", "Protein_LIG", "|",
            "gmx_mpi", "trjconv ",
@@ -67,11 +69,13 @@ def cut_traj(trj_path, tpr, out_path, dt=100, ndx='i.ndx'):
            "-f", trj_path,
            "-o", out_path,
            "-n", ndx,
-           "-dt", dt,
+           "-dt", str(dt),
            "-fit", "rot+trans"]
+    log.debug(f"{' '.join(cmd)}")
     # Run the trjconv command
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(' '.join(cmd), shell=True,
+                       check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -235,7 +239,7 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
                         "-n", ndx,
                         "-o", "/tmp/tmp1.xtc",
                         "-pbc", "whole"],
-                       check=True)
+                       check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -248,7 +252,7 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
                         "-n", ndx,
                         "-o", "/tmp/tmp2.xtc",
                         "-pbc", "cluster"],
-                       check=True)
+                       check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -261,7 +265,7 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
                         "-n", ndx,
                         "-o", out_path,
                         "-pbc", "mol", "-ur", "compact", "-center"],
-                       check=True)
+                       check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
@@ -275,14 +279,17 @@ def concat_traj(directory, out_path='full_traj.xtc'):
     # Assume input file extension based on output path
     ext = out_path.split('.')[-1]
 
-    # todo: check that the files exist
-    # todo: check that all the names of the inputs are the same:
+    log.info(f"Concatenating Trajectories in {directory}/")
+
+    # TODO: check that the files exist
+    # TODO: check that all the names of the inputs are the same:
     #       i.e. there are not name.part000*.xtc AND name.xtc
+    cmd = ["gmx_mpi", "trjcat ",
+           "-f", f"{directory}/*.{ext}",
+           "-o", f"{directory}/{out_path}"],
+    log.debug(f"{' '.join(cmd)}")
     try:
-        subprocess.run(["gmx_mpi", "trjcat ",
-                        "-f", f"{directory}/*.{ext}",
-                        "-o", f"{directory}/{out_path}"],
-                       check=True)
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))

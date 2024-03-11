@@ -23,10 +23,8 @@ from MDAnalysis.analysis import rms
 from parmed import gromacs, amber, load_file
 from os.path import exists
 
-# TODO -> fix and upgrade basic logger
-logging.basicConfig(level=logging.INFO,
-                    format='[%(levelname)s] %(asctime)s - %(message)s')
-log = logging.getLogger()
+log = logging.getLogger(__name__)
+log.info("Traj Tools Loaded")
 
 
 def _process_atm_nm(name):
@@ -243,7 +241,7 @@ def dump_rmsd(top_path, trj_path, ref_str, out_path=None,
 
 def measure_rmsf(top_path, trj_path, measure='backbone',
                  select='protein', per_res=True):
-    res = ' -res ' if per_res else ''
+    res = '-res' if per_res else ''
     # Get the directory that this file is in.
     s_path = '/'.join(__file__.split('/')[:-1])
     cmd = ["python", f"{s_path}/measure_rmsf.py",
@@ -252,7 +250,7 @@ def measure_rmsf(top_path, trj_path, measure='backbone',
            f"\"{measure}\"", f"\"{select}\"", res]
     # Measure the RMSF
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(' '.join(cmd), shell=True, check=True)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
