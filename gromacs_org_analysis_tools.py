@@ -231,41 +231,47 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
     elif '/' not in out_path:
         out_path = '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
     # Step 1: -pbc whole, produces tmp1.xtc
-    try:
-        subprocess.run(["echo", f"{out_group}", "|",
+    cmd = ["echo", f"{out_group}", "|",
                         "gmx_mpi", "trjconv",
                         "-f", trj_path,
                         "-s", tpr,
                         "-n", ndx,
                         "-o", "/tmp/tmp1.xtc",
-                        "-pbc", "whole"],
-                       check=True, stdout=subprocess.DEVNULL)
+                        "-pbc", "whole"]
+    log.debug(f"{' '.join(cmd)}")
+    try:
+        subprocess.run(' '.join(cmd),
+                       shell=True, check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # Step 2: -pbc cluster, produces tmp2.xtc
-    try:
-        subprocess.run(["echo", "Protein", f"{out_group}", "|",
+    cmd = ["echo", "Protein", f"{out_group}", "|",
                         "gmx_mpi", "trjconv",
                         "-f", "/tmp/tmp1.xtc",
                         "-s", tpr,
                         "-n", ndx,
                         "-o", "/tmp/tmp2.xtc",
-                        "-pbc", "cluster"],
-                       check=True, stdout=subprocess.DEVNULL)
+                        "-pbc", "cluster"]
+    log.debug(f"{' '.join(cmd)}")
+    try:
+        subprocess.run(' '.join(cmd),
+                       shell=True, check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
     # run trjconv to produce a readable output
-    try:
-        subprocess.run(["echo", "Protein", f"{out_group}", "|",
+    cmd = ["echo", "Protein", f"{out_group}", "|",
                         "gmx_mpi", "trjconv",
                         "-f", "/tmp/tmp2.xtc",
                         "-s", tpr,
                         "-n", ndx,
                         "-o", out_path,
-                        "-pbc", "mol", "-ur", "compact", "-center"],
-                       check=True, stdout=subprocess.DEVNULL)
+                        "-pbc", "mol", "-ur", "compact", "-center"]
+    log.debug(f"{' '.join(cmd)}")
+    try:
+        subprocess.run(' '.join(cmd),
+                       shell=True, check=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
