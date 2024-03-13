@@ -384,3 +384,22 @@ def atom_numbers(pdb, select, names=None):
     u = u.select_atoms(sel_str)
     # Pass the IDs (from pdb input) as a list.
     return list(u.atoms.ids)
+
+
+def usym(string):
+    string = string.casefold()
+    if "ang" in string or string == "a":
+        u_char = "\u212B"
+    elif string == "pm" or all(x in string for x in ["pl", "mi"]):
+        u_char = "\u00B1"
+    elif "deg" in string:
+        u_char = "\u00B0"
+    elif any(x in string for x in ["alpha", "al"]):
+        u_char = "\u03B1"
+    elif any(x in string for x in ["beta", "be"]):
+        u_char = "\u03B2"
+    elif any(x in string for x in ["gamma", "ga", "y"]):
+        u_char = "\u03B3"
+    else:
+        raise ValueError('Please input a valid name')
+    return u_char
