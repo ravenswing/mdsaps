@@ -314,6 +314,7 @@ def snapshot_pdbs(trj_path, tpr, snapshots, ns=True, ref_str=None):
               '. Output:', error.output.decode("utf-8"))
     # Define the output name
     stem = trj_path.split('/')[-1].split('.')[0]
+
     for ts in snapshots:
         ts = ts*1000 if ns else ts
         try:

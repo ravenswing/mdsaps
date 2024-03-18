@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 log.info("Traj Tools Loaded")
 
 
-def _process_atm_nm(name):
+def _process_atm_nm(name: str) -> str:
     log.debug(f'Atom Name: |{name}|')
     # Full length names are left unchanged
     if len(name) == 4:
@@ -37,7 +37,7 @@ def _process_atm_nm(name):
         return f" {name:<3}"
 
 
-def format_pdb(info, chain=False):
+def format_pdb(info: list, chain: bool = False) -> str:
     # Process atom name seperately
     atm_nm = _process_atm_nm(info[2])
 
@@ -80,7 +80,7 @@ def format_pdb(info, chain=False):
     return new_line
 
 
-def amber_to_gromacs(top_file, crd_file):
+def amber_to_gromacs(top_file: str, crd_file: str) -> None:
     ''' Convert a system from Amber --> Gromacs using ParmEd '''
     # Check that the topology has a readable extension
     assert top_file.split('.')[-1] in ['parm7', 'prmtop'], "ERROR"
@@ -95,7 +95,7 @@ def amber_to_gromacs(top_file, crd_file):
     amber.save(f"{crd_file.split('.')[0]}_a2g.gro", overwrite=True)
 
 
-def gromacs_to_amber(top_file, crd_file):
+def gromacs_to_amber(top_file: str, crd_file:str) -> None:
     ''' Convert a system from Gromacs --> Amber using ParmEd '''
     # Check that the topology has a readable extension
     assert top_file.split('.')[-1] == 'top', "ERROR"
@@ -121,7 +121,7 @@ def gromacs_to_amber(top_file, crd_file):
     amb_crd.close()
 
 
-def amber_to_pdb(top_file, crd_file, autoimage=False):
+def amber_to_pdb(top_file: str, crd_file: str, autoimage: bool = False) -> None:
     ''' Convert a system from Amber --> PDB using PyTraj '''
     # Check that the topology has a readable extension
     assert top_file.split('.')[-1] in ['parm7', 'prmtop'], "ERROR"
