@@ -372,7 +372,8 @@ def comb_mean_std(N, X, S):
 
 
 def atom_numbers(pdb, select, names=None):
-    """ Extract the atom numbers from a topology, based on selection.
+    """
+        Extract the atom numbers from a topology, based on selection.
         If names are given, are chained with 'or' to the selection.
     """
     # Load the pdb into MDAnalysis
@@ -387,19 +388,28 @@ def atom_numbers(pdb, select, names=None):
 
 
 def usym(string):
+    """
+        Encode unicode symbols based on standard naming...
+    """
     string = string.casefold()
+    # Angstrom 
     if "ang" in string or string == "a":
         u_char = "\u212B"
+    # Plus Minus
     elif string == "pm" or all(x in string for x in ["pl", "mi"]):
         u_char = "\u00B1"
+    # Degress
     elif "deg" in string:
         u_char = "\u00B0"
+    # Greek letter alpha (lower case)
     elif any(x in string for x in ["alpha", "al"]):
-        u_char = "\u03B1"
+        u_char = "\u03B1")
+    # Greek letter beta (lower case)
     elif any(x in string for x in ["beta", "be"]):
         u_char = "\u03B2"
+    # Greek letter gamma (lower case)
     elif any(x in string for x in ["gamma", "ga", "y"]):
         u_char = "\u03B3"
     else:
-        raise ValueError('Please input a valid name')
+        raise ValueError('Please input a valid symbol reference.')
     return u_char

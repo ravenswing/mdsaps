@@ -9,7 +9,7 @@ import pandas as pd
 import pickle
 
 
-def hills(filename):
+def hills(filename: str) -> list:
     hills = [[], []]
     with open(filename) as f:
         lines = f.readlines()
@@ -20,7 +20,7 @@ def hills(filename):
     return hills
 
 
-def colvar(filename, output='as_pandas'):
+def colvar(filename: str, output: str='as_pandas'):
     with open(filename) as f:
         head = f.readlines()[0]
     head = head.split()[2:]
@@ -43,7 +43,7 @@ def colvar(filename, output='as_pandas'):
         return old_col.values.astype(float)
 
 
-def fes(filename, mode='pandas', is_rew=False):
+def fes(filename: str, mode: str = 'pandas', is_rew: bool = False):
     if mode == 'pandas':
         with open(filename) as f:
             head = f.readlines()[0]
@@ -83,7 +83,7 @@ def fes(filename, mode='pandas', is_rew=False):
         return fes, [x_name, y_name]
 
 
-def fes_simple(filename, is_rew):
+def fes_simple(filename: str, is_rew: bool):
     fes = np.loadtxt(filename)
     return fes
 

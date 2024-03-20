@@ -55,15 +55,17 @@ def run_sumhills(wd, out_name, name='HILLS', stride=None, cv=None):
               '. Output:', error.output.decode("utf-8"))
 
 
-def cut_traj(trj_path, tpr, out_path, dt=100, ndx='i.ndx'):
+def cut_traj(trj_path: str, tpr: str, out_path: str,
+             dt=100, ndx: str = 'i.ndx', apo: bool = False) -> None:
     """ cutdown the trajectories using Gromacs trjconv ready for GISMO """
     # Assume working directory is same as traj if not specified
     tpr = tpr if '/' in tpr else '/'.join(trj_path.split('/')[:-1]) + '/' + tpr
     out_path = out_path if '/' in out_path else '/'.join(trj_path.split('/')[:-1]) + '/' + out_path
     ndx = ndx if '/' in ndx else '/'.join(trj_path.split('/')[:-1]) + '/' + ndx
     log.info(f"Cutting Trajectory {trj_path.split('/')[-1]}")
+    out_group = "Protein" if apo else "Protein_LIG"
     # Create the trjconv command from user input
-    cmd = ["echo", "Backbone", "Protein_LIG", "|",
+    cmd = ["echo", "Backbone", out_group, "|",
            "gmx_mpi", "trjconv ",
            "-s", tpr,
            "-f", trj_path,
