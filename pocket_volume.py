@@ -4,7 +4,7 @@ from MDAnalysis.analysis import align
 import traj_tools as tt
 
 
-def aligned_pdb(wd, ref_path):
+def aligned_pdb(wd: str, ref_path: str) -> None:
     u = tt._init_universe(f"{wd}/md_dry.pdb")
     protein = u.select_atoms("protein or resname S2P")
     with mda.Writer(f'{wd}/tmp_prot.pdb', protein.n_atoms) as W:
@@ -17,7 +17,7 @@ def aligned_pdb(wd, ref_path):
                               filename=f'{wd}/aligned.pdb').run()
 
 
-def aligned_dcd(wd, xtc_name, ref_path):
+def aligned_dcd(wd: str, xtc_name: str, ref_path: str) -> None:
     # ADD NFRAMES ARGUMENT AN LINSPACE FOR FRAME ITERATION!
     u = tt._init_universe([f"{wd}/md_dry.pdb", f"{wd}/{xtc_name}"])
     protein = u.select_atoms("protein or resname S2P")

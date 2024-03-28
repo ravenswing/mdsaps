@@ -403,7 +403,7 @@ def usym(string):
         u_char = "\u00B0"
     # Greek letter alpha (lower case)
     elif any(x in string for x in ["alpha", "al"]):
-        u_char = "\u03B1")
+        u_char = "\u03B1"
     # Greek letter beta (lower case)
     elif any(x in string for x in ["beta", "be"]):
         u_char = "\u03B2"

@@ -292,12 +292,13 @@ def concat_traj(directory, out_path='full_traj.xtc'):
     # TODO: check that the files exist
     # TODO: check that all the names of the inputs are the same:
     #       i.e. there are not name.part000*.xtc AND name.xtc
-    cmd = ["gmx_mpi", "trjcat ",
+    cmd = ["gmx_mpi", "trjcat",
            "-f", f"{directory}/*.{ext}",
-           "-o", f"{directory}/{out_path}"],
+           "-o", f"{directory}/{out_path}"]
     log.debug(f"{' '.join(cmd)}")
     try:
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(' '.join(cmd), check=True,
+                       shell=True, stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
