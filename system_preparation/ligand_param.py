@@ -18,12 +18,10 @@ import pytraj as pt
 from glob import glob
 from itertools import chain
 import subprocess
-import sys
 import os
 import re
 
-sys.path.append('/home/rhys/phd_tools/SAPS/')
-import traj_tools as tt
+import ..tools as tt
 
 
 # .COM FILE MANIPULATION

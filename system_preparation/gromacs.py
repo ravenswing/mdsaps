@@ -15,7 +15,9 @@ from itertools import chain
 import numpy as np
 import parmed as pmd
 import pytraj as pt
-from traj_tools import format_pdb
+import sys
+
+from ..tools import format_pdb
 
 
 def make_dirs(name, sys, lig):

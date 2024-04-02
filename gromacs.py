@@ -10,7 +10,7 @@ import logging
 import pandas as pd
 import subprocess
 
-import load
+from . import load
 
 log = logging.getLogger(__name__)
 log.info("G.O.A.T. (Gromacs Organisation n' Analysis Tools) Loaded")

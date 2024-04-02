@@ -1,7 +1,8 @@
 import subprocess
 import MDAnalysis as mda
 from MDAnalysis.analysis import align
-import traj_tools as tt
+
+from . import tools as tt
 
 
 def aligned_pdb(wd: str, ref_path: str) -> None:
