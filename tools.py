@@ -156,24 +156,6 @@ def _init_universe(in_str):
         raise ValueError("Structure not recognised")
 
 
-def measure_rmsd(top_path, trj_path, ref_str, rmsd_groups,
-                 aln_group='backbone'):
-    # Load the topology and trajectory
-    U = _init_universe([top_path, trj_path])
-    if ref_str:
-        # Load ref. structure if path is given
-        ref = _init_universe(ref_str)
-    else:
-        # If ref_str = 0 i.e. use starting frame, assign ref as input traj.
-        ref = U
-    R = rms.RMSD(U,  # universe to align
-                 ref,  # reference universe or atomgroup
-                 select=aln_group,  # group to superimpose and calculate RMSD
-                 groupselections=rmsd_groups,  # groups for RMSD
-                 ref_frame=0).run()  # frame index of the reference
-    return pd.DataFrame(columns=['t', 'rmsd'], data=R.results.rmsd[:, [1, -1]])
-
-
 def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
 
     # Create dataframe from new data with desired index and 1 column
@@ -210,6 +192,24 @@ def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
         # ... make a new hdf file and save the first column of data.
         log.info('No HDF Found -> Creating File')
         df.to_hdf(hdf_path, key='df')
+
+
+def measure_rmsd(top_path, trj_path, ref_str, rmsd_groups,
+                 aln_group='backbone'):
+    # Load the topology and trajectory
+    U = _init_universe([top_path, trj_path])
+    if ref_str:
+        # Load ref. structure if path is given
+        ref = _init_universe(ref_str)
+    else:
+        # If ref_str = 0 i.e. use starting frame, assign ref as input traj.
+        ref = U
+    R = rms.RMSD(U,  # universe to align
+                 ref,  # reference universe or atomgroup
+                 select=aln_group,  # group to superimpose and calculate RMSD
+                 groupselections=rmsd_groups,  # groups for RMSD
+                 ref_frame=0).run()  # frame index of the reference
+    return pd.DataFrame(columns=['t', 'rmsd'], data=R.results.rmsd[:, [1, -1]])
 
 
 def save_rmsd(ids, top_path, trj_path, hdf_path, measure,
@@ -337,6 +337,22 @@ def save_com_dist(ids: list, top_path: str, trj_path: str, hdf_path: str,
     multiindex_hdf(dist, ids, hdf_path, 'com', 't')
 
 
+def atom_numbers(pdb, select, names=None):
+    """
+        Extract the atom numbers from a topology, based on selection.
+        If names are given, are chained with 'or' to the selection.
+    """
+    # Load the pdb into MDAnalysis
+    u = _init_universe(pdb)
+    # Create the string to pass to select (adding names as a list of 'or's).
+    sel_str = f"{select} and (name {' '.join(names)})"
+    log.debug(f"Select str used: {sel_str}")
+    # Select the AtomGroup with just the wanted atoms.
+    u = u.select_atoms(sel_str)
+    # Pass the IDs (from pdb input) as a list.
+    return list(u.atoms.ids)
+
+
 def simple_avg_table(hdf_path, csv=None):
     df = pd.read_hdf(hdf_path, key='df')
     df.columns = df.columns.map(','.join)
@@ -371,23 +387,7 @@ def comb_mean_std(N, X, S):
     return comb_mean, comb_std
 
 
-def atom_numbers(pdb, select, names=None):
-    """
-        Extract the atom numbers from a topology, based on selection.
-        If names are given, are chained with 'or' to the selection.
-    """
-    # Load the pdb into MDAnalysis
-    u = _init_universe(pdb)
-    # Create the string to pass to select (adding names as a list of 'or's).
-    sel_str = f"{select} and (name {' '.join(names)})"
-    log.debug(f"Select str used: {sel_str}")
-    # Select the AtomGroup with just the wanted atoms.
-    u = u.select_atoms(sel_str)
-    # Pass the IDs (from pdb input) as a list.
-    return list(u.atoms.ids)
-
-
-def usym(string):
+def usym(string: str) -> str:
     """
         Encode unicode symbols based on standard naming...
     """

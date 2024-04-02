@@ -83,12 +83,7 @@ def fes(filename: str, mode: str = 'pandas', is_rew: bool = False):
         return fes, [x_name, y_name]
 
 
-def fes_simple(filename: str, is_rew: bool):
-    fes = np.loadtxt(filename)
-    return fes
-
-
-def xvg(filename):
+def xvg(filename: str) -> list:
     ''' load xvg '''
     with open(filename) as f:
         lines = f.readlines()
@@ -97,39 +92,29 @@ def xvg(filename):
     return data
 
 
-def cd(filename):
+def cd(filename: str) -> list:
     ''' load CD data '''
     with open(filename) as f:
         lines = f.readlines()
         data = [s for s in lines if not s.startswith(('@', '#'))]
     data = [[float(val) for val in ln.split()] for ln in data]
+    # data = [line for line in data if len(line) == 2]
+    # if "SESCA" in filename: print(data)
+    # out_data = [[l[0] for l in data], [l[1] for l in data]]
+    # return out_data
     return data
 
 
-def p(filename):
+def p(filename: str):
     ''' Simple 1D pickle load '''
     with open(filename, 'rb') as f:
         return pickle.load(f)
 
 
-def pdb(filename):
+def pdb(filename: str) -> list:
     # Load complex pdb to edit
     with open(filename, 'r') as f:
         lines = f.readlines()
     print(f'Loaded {filename}')
     lines = [line.split() for line in lines]
     return lines
-
-
-'''
-def cd(filename):
-    """ load CD data """
-    with open(filename) as f:
-        lines = f.readlines()
-        data = [l for l in lines if l[0] not in ("@", "#")]
-    data = [[float(val) for val in line.split()] for line in data]
-    data = [line for line in data if len(line) == 2]
-    if "SESCA" in filename: print(data)
-    out_data = [[l[0] for l in data], [l[1] for l in data]]
-    return out_data
-'''

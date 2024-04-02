@@ -111,7 +111,7 @@ def make_fulltraj(directory, ref_str):
     _run_cpptraj(directory, 'fulltraj.in')
 
 
-def align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
+def structure_align(in_str, ref_str, out_str, aln_mask='@CA,C,N,O', strip_mask=None):
     # Load the initial structure
     to_align = _load_structure(in_str)
     ref = _load_structure(ref_str)
@@ -173,10 +173,10 @@ def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
             '''
             # Align all output structures
             for path in glob(f"{directory}/snapshots/*.pdb"):
-                align(path,
-                      (f"{directory}/snapshots/"
-                       f"{stem}_{snapshots[0][0]/200:.0f}ns.pdb"),
-                      path)
+                structure_align(path,
+                                (f"{directory}/snapshots/"
+                                f"{stem}_{snapshots[0][0]/200:.0f}ns.pdb"),
+                                path)
 
 
 def cut_traj(trj_path, top, out_path, dt=100, split=False, strip_mask=None):
@@ -201,7 +201,7 @@ def cut_traj(trj_path, top, out_path, dt=100, split=False, strip_mask=None):
     print(f'Saved new trajectory: {out_path}')
 
 
-def amber_rmsd(trj_path, top_path, ref_str, rmsd_mask,
+def rmsd(trj_path, top_path, ref_str, rmsd_mask,
                aln_mask='@CA,C,N,O', nofit=True):
     # Load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
@@ -216,7 +216,7 @@ def amber_rmsd(trj_path, top_path, ref_str, rmsd_mask,
     return data
 
 
-def amber_rmsf(trj_path, top_path, ref_str, rmsf_mask, aln_mask='@CA,C,N,O'):
+def rmsf(trj_path, top_path, ref_str, rmsf_mask, aln_mask='@CA,C,N,O'):
     # Load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # Load ref. structure if path is given
@@ -244,8 +244,8 @@ def extract_frame(trj_path, top, out_path,
     print(f'Saved new trajectory: {out_path}')
 
 
-def measure_distance(trj_path, top_path, atom_pair, ref_str,
-                     aln_mask='@CA,C,N,O'):
+def measure_dist(trj_path, top_path, atom_pair, ref_str,
+                 aln_mask='@CA,C,N,O'):
     # Load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # Load ref. structure if path is given
