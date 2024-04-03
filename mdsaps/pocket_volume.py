@@ -2,7 +2,7 @@ import subprocess
 import MDAnalysis as mda
 from MDAnalysis.analysis import align
 
-from ..tools import _init_universe
+from .tools import _init_universe
 
 
 def aligned_pdb(wd: str, ref_path: str) -> None:

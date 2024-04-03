@@ -13,6 +13,11 @@ from .lib.general import (
     test_print
 )
 
-from . import system_preparation
+# TODO: look into module from subpackage -> package namespace
+# For now moved pocket_volume out of lib/
+# from .lib import (
+    # pocket_volume
+# )
 
+from . import system_preparation
 from . import plot
