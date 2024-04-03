@@ -13,8 +13,7 @@ import pandas as pd
 import sys
 import plotly.graph_objects as go
 
-sys.path.append('/home/rhys/phd_tools/SAPS')
-import load
+from . import load
 
 ANG = "\u212B"
 

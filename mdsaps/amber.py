@@ -22,11 +22,6 @@ import shutil
 from math import floor
 import MDAnalysis as mda
 from MDAnalysis.analysis import diffusionmap, rms
-import sys
-sys.path.append('/home/rhys/phd_tools/SAPS')
-import traj_tools as tt
-import graphics
-import load
 '''
 
 

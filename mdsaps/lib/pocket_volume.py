@@ -2,32 +2,32 @@ import subprocess
 import MDAnalysis as mda
 from MDAnalysis.analysis import align
 
-from . import tools as tt
+from ..tools import _init_universe
 
 
 def aligned_pdb(wd: str, ref_path: str) -> None:
-    u = tt._init_universe(f"{wd}/md_dry.pdb")
+    u = _init_universe(f"{wd}/md_dry.pdb")
     protein = u.select_atoms("protein or resname S2P")
     with mda.Writer(f'{wd}/tmp_prot.pdb', protein.n_atoms) as W:
         for ts in u.trajectory:
             W.write(protein)
 
-    mobile = tt._init_universe(f'{wd}/tmp_prot.pdb')
-    ref = tt._init_universe(ref_path)
+    mobile = _init_universe(f'{wd}/tmp_prot.pdb')
+    ref = _init_universe(ref_path)
     aligner = align.AlignTraj(mobile, ref, select='backbone',
                               filename=f'{wd}/aligned.pdb').run()
 
 
 def aligned_dcd(wd: str, xtc_name: str, ref_path: str) -> None:
     # ADD NFRAMES ARGUMENT AN LINSPACE FOR FRAME ITERATION!
-    u = tt._init_universe([f"{wd}/md_dry.pdb", f"{wd}/{xtc_name}"])
+    u = _init_universe([f"{wd}/md_dry.pdb", f"{wd}/{xtc_name}"])
     protein = u.select_atoms("protein or resname S2P")
     with mda.Writer(f'{wd}/tmp_prot.xtc', protein.n_atoms) as W:
         for ts in u.trajectory[::5]:
             W.write(protein)
 
-    mobile = tt._init_universe([f'{wd}/aligned.pdb', f'{wd}/tmp_prot.xtc'])
-    ref = tt._init_universe(ref_path)
+    mobile = _init_universe([f'{wd}/aligned.pdb', f'{wd}/tmp_prot.xtc'])
+    ref = _init_universe(ref_path)
     aligner = align.AlignTraj(mobile, ref, select='backbone',
                               filename=f'{wd}/aligned.dcd').run()
 
