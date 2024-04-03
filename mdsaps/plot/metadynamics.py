@@ -2,31 +2,18 @@
 ===============================================================================
                       CHAR CHAR CHAR CHAR CHAR CHARTS!!!
 ===============================================================================
-
-    - Analysis
-    - Plotting
-    - Calculations
 """
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import sys
 import plotly.graph_objects as go
 
-from . import load
+from .. import load
+from . import plot_config as config
 
-ANG = "\u212B"
-
-# global colours
-CLR = {'ax': 'rgb(69, 69, 69)',
-       'ln': 'rgb(116, 62, 122)',
-       'f1': 'rgb(251, 218, 230)',
-       'f2': 'rgb(255, 241, 194)',
-       'A769':  ['#e76f51', '#A23216'],
-       'PF739': ['#f4a261', '#994B0B'],
-       'SC4':   ['#e9c46a', '#A07918'],
-       'MT47':  ['#2a9d8f', '#1E7167'],
-       'MK87':  ['#264653', '#13242A']}
+clr = config.colour_dict
+c = config.default_colour
 
 
 def fes(fes_path, save_path, units='A', basins=None, funnel=None,
@@ -62,13 +49,13 @@ def fes(fes_path, save_path, units='A', basins=None, funnel=None,
                 ))
     # format axes
     fig.update_xaxes(showline=True,
-                     linecolor=CLR['ax'],
+                     linecolor=clr['ax'],
                      title_text=labels[0],
                      linewidth=0.5,
                      title_standoff=20,
                      ticks='outside', minor_ticks='outside')
     fig.update_yaxes(showline=True,
-                     linecolor=CLR['ax'],
+                     linecolor=clr['ax'],
                      title_text=labels[1],
                      linewidth=0.5,
                      title_standoff=20,
@@ -83,7 +70,7 @@ def fes(fes_path, save_path, units='A', basins=None, funnel=None,
     # format the rest of the figure
     fig.update_layout(height=1600, width=2200,
                       title_text="",
-                      font=dict(color=CLR['ax'],
+                      font=dict(color=clr['ax'],
                                 family='Arial', size=32),
                       paper_bgcolor="rgba(0,0,0,0)",
                       plot_bgcolor="rgba(0,0,0,0)",
@@ -102,7 +89,7 @@ def fes(fes_path, save_path, units='A', basins=None, funnel=None,
                               y0=b[2],
                               y1=b[3],
                               line_dash='dash',
-                              line=dict(color=CLR['ax'], width=5))
+                              line=dict(color=clr['ax'], width=5))
             else:
                 fig.add_shape(type="rect",
                               x0=b[0],
@@ -111,7 +98,7 @@ def fes(fes_path, save_path, units='A', basins=None, funnel=None,
                               y1=b[3],
                               line_dash='dash',
                               label=dict(text=str(i), font=dict(size=64)),
-                              line=dict(color=CLR['ax'], width=5))
+                              line=dict(color=clr['ax'], width=5))
 
     fig.write_image(save_path, scale=2)
 
@@ -122,101 +109,6 @@ def fes(fes_path, save_path, units='A', basins=None, funnel=None,
     # cbar.set_label('Free Energy (kcal/mol)') 
 
 
-def multiplot(hdf_path, DIVS, save_frmt, title_frmt,
-              plot_index=0, labels=None, xlims=None, ylims=None,
-              average=False):
-
-    data = pd.read_hdf(hdf_path, key='df')
-
-    plots = DIVS.pop(plot_index)
-    print(plots)
-    print(DIVS)
-
-    for p, plot in enumerate(plots):
-        # initiate plots and titles
-        fig, ax = plt.subplots(len(DIVS[0]), len(DIVS[1]),
-                               figsize=(len(DIVS[1])*8, len(DIVS[0])*5))
-        plt.suptitle(title_frmt.format(plot))
-        plt.subplots_adjust(top=0.95)
-        # add the plots to the axes
-        for i, t1 in enumerate(DIVS[0]):
-            for j, t2 in enumerate(DIVS[1]):
-                if plot_index == 0:
-                    df = data[plot][t1][t2]
-                elif plot_index == 1:
-                    df = data[t1][plot][t2]
-                elif plot_index == 2:
-                    df = data[t1][t2][plot]
-                else:
-                    print('UNSUPPORTED PLOT INDEX')
-                mean = pd.Series(df).rolling(1000, center=True).mean()
-                stdev = pd.Series(df).rolling(1000, center=True).std()
-
-                upr = mean.add(stdev)
-                lwr = mean.sub(stdev)
-
-                col = 'xkcd:navy'
-
-                ax[i, j].plot(df.index*0.001, mean, c=col,
-                              lw=0.8, label=f'{t1} - {t2}')
-                ax[i, j].fill_between(df.index*0.001, upr.values, lwr.values,
-                                      alpha=0.3)
-
-                if average:
-                    ax[i, j].axhline(y=df.mean(),
-                                     c='k', alpha=0.5, lw=1.5, ls='--')
-
-                # ax[i, j].set_title(f'{t1} - {t2}')
-                ax[i, j].legend()
-                if xlims:
-                    ax[i, j].set_xlim(xlims)
-                if ylims:
-                    ax[i, j].set_ylim(ylims)
-                if labels and i == 1:
-                    ax[i, j].set_xlabel(labels[0])
-                if labels and j == 0:
-                    ax[i, j].set_ylabel(labels[1])
-        fig.savefig(save_frmt.format(plot), dpi=450, bbox_inches='tight')
-        plt.close()
-
-
-def all_columns(hdf_path, save_frmt, title='Highlight:',
-                labels=None, xlims=None, ylims=None, hline=False):
-
-    df = pd.read_hdf(hdf_path, key='df')
-    df.columns = df.columns.map('_'.join)
-    for col, data in df.items():
-        fig, ax = plt.subplots(figsize=(12, 6.75))
-        mean = data.rolling(1000, center=True).mean()
-        stdev = data.rolling(1000, center=True).std()
-
-        upr = mean.add(stdev)
-        lwr = mean.sub(stdev)
-
-        CLR = 'xkcd:navy'
-
-        ax.plot(df.index*0.001, mean, c=CLR, lw=0.8)
-        ax.fill_between(df.index*0.001, upr.values, lwr.values, alpha=0.2)
-
-        if hline:
-            if hline == 'average':
-                ax.axhline(y=data.mean(),
-                           c='k', alpha=0.5, lw=1.5, ls='--')
-            else:
-                ax.axhline(y=hline,
-                           c='k', alpha=0.5, lw=1.5, ls='--')
-        if xlims:
-            ax.set_xlim(xlims)
-        if ylims:
-            ax.set_ylim(ylims)
-        if labels:
-            ax.set_xlabel(labels[0])
-            ax.set_ylabel(labels[1])
-        ax.set_title(f"{title} {' '.join(col.split('_'))}")
-        fig.savefig(save_frmt.format(col), dpi=450, bbox_inches='tight')
-        plt.close()
-
-
 def cvs(colvar_path, save_path, cvs, units='A', title='CV Diffusion',
         xlims=None, ylims=None):
     colvar = load.colvar(f"{colvar_path}")
@@ -225,7 +117,7 @@ def cvs(colvar_path, save_path, cvs, units='A', title='CV Diffusion',
     for i, cv in enumerate(cvs):
         ax[i].scatter(colvar.time.multiply(0.001),
                       colvar[cv].multiply(10),
-                      c='#089682', s=8, alpha=.4)
+                      c=c, s=8, alpha=.4)
         ax[i].set_xlabel('Time (ns)')
         ax[i].set_ylabel(f"{cvs[cv]}")
     fig.suptitle(f"{title}", fontsize=16)
@@ -281,17 +173,6 @@ def hills_multi(DIVS, path_frmt, save_name, shape):
         ax[i].set_ylabel('Hills Heights')
     fig.savefig(save_name, dpi=300, bbox_inches='tight')
     plt.close()
-
-
-def xvg_line(xvg_data, ax, col, line='solid', rollavg=True, label=None):
-    head = xvg_data.columns.values.tolist()
-    xvg_data['mean'] = xvg_data[head[1]].rolling(500, center=True).mean()
-    y1 = xvg_data[head[1]].values*10
-    y2 = xvg_data['mean'].values*10
-    x = xvg_data[head[0]]/1000
-    ax.plot(x, y1, c=col, alpha=0.3, lw=0.5)
-    ax.plot(x, y2, c=col, alpha=1., lw=1., ls=line, label=label)
-    ax.grid(alpha=0.3)
 
 
 def convergence(fes_dir, ts_list, ax):
