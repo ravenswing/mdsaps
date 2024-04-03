@@ -282,7 +282,7 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx='i.ndx',
     subprocess.run("rm /tmp/*.xtc", shell=True)
 
 
-def concat_traj(directory, out_path='full_traj.xtc'):
+def concat_traj(directory: str, stem: str = None, out_path: str = 'full_traj.xtc'):
 
     # Assume input file extension based on output path
     ext = out_path.split('.')[-1]
@@ -292,8 +292,9 @@ def concat_traj(directory, out_path='full_traj.xtc'):
     # TODO: check that the files exist
     # TODO: check that all the names of the inputs are the same:
     #       i.e. there are not name.part000*.xtc AND name.xtc
+    file_glob = f"{directory}/{stem}*.{ext}" if stem else f"{directory}/*.{ext}"
     cmd = ["gmx_mpi", "trjcat",
-           "-f", f"{directory}/*.{ext}",
+           "-f", file_glob,
            "-o", f"{directory}/{out_path}"]
     log.debug(f"{' '.join(cmd)}")
     try:

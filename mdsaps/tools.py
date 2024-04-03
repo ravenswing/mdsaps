@@ -20,7 +20,8 @@ from multiprocessing import Pool
 from functools import partial
 from numbers import Number
 from MDAnalysis.analysis import rms
-from parmed import gromacs, amber, load_file
+# from parmed import gromacs, amber, load_file
+import parmed
 from os.path import exists
 
 log = logging.getLogger(__name__)
@@ -88,11 +89,11 @@ def amber_to_gromacs(top_file: str, crd_file: str) -> None:
     assert crd_file.split('.')[-1] in ['rst7', 'ncrst', 'restrt'], "ERROR"
 
     # Load the system (from ParmEd)
-    amber = load_file(top_file, crd_file)
+    parmed.amber = load_file(top_file, crd_file)
     # Write the new Gromacs topology file (.top)
-    amber.save(f"{top_file.split('.')[0]}_a2g.top", overwrite=True)
+    parmed.amber.save(f"{top_file.split('.')[0]}_a2g.top", overwrite=True)
     # Write the new Gromacs coordinate file (.gro)
-    amber.save(f"{crd_file.split('.')[0]}_a2g.gro", overwrite=True)
+    parmed.amber.save(f"{crd_file.split('.')[0]}_a2g.gro", overwrite=True)
 
 
 def gromacs_to_amber(top_file: str, crd_file:str) -> None:
@@ -103,18 +104,18 @@ def gromacs_to_amber(top_file: str, crd_file:str) -> None:
     assert crd_file.split('.')[-1] == 'gro', "ERROR"
 
     # Import the Gromacs topology (gromacs from ParmEd)
-    gmx_top = gromacs.GromacsTopologyFile(top_file)
+    gmx_top = parmed.gromacs.GromacsTopologyFile(top_file)
     # Import the Gromacs coordinates
-    gmx_gro = gromacs.GromacsGroFile.parse(crd_file)
+    gmx_gro = parmed.gromacs.GromacsGroFile.parse(crd_file)
     # Exchange some of the information as Amber/Gromacs files store dif. info
     gmx_top.box = gmx_gro.box  # (Needed because .prmtop contains box info)
     gmx_top.positions = gmx_gro.positions
     # Create Amber parm object (amber from ParmEd)
-    amb_prm = amber.AmberParm.from_structure(gmx_top)
+    amb_prm = parmed.amber.AmberParm.from_structure(gmx_top)
     # Write the new Amber topology file (.prmtop)
     amb_prm.write_parm(f"{top_file.split('.')[0]}_g2a.prmtop")
     # Write the new Amber coordinate file (.rst7)
-    amb_crd = amber.AmberAsciiRestart(f"{crd_file.split('.')[0]}_g2a.rst7",
+    amb_crd = parmed.amber.AmberAsciiRestart(f"{crd_file.split('.')[0]}_g2a.rst7",
                                       mode="w")
     amb_crd.coordinates = gmx_top.coordinates
     amb_crd.box = gmx_top.box
