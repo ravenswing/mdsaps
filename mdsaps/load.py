@@ -28,7 +28,7 @@ def colvar(filename: str, output: str='as_pandas'):
     # Filters out comment lines and splits columns via whitespace.
     old_col = pd.concat([df for df in
                          pd.read_csv(filename,
-                                     delim_whitespace=True,
+                                     sep='\s+',
                                      names=head,
                                      skiprows=1,
                                      comment='#',
@@ -49,7 +49,7 @@ def fes(filename: str, mode: str = 'pandas', is_rew: bool = False):
             head = f.readlines()[0]
         head = head.split()[2:]
         fes = pd.concat([df for df in pd.read_csv(filename,
-                                                  delim_whitespace=True,
+                                                  sep='\s+',
                                                   names=head,
                                                   comment='#',
                                                   chunksize=1000)])
