@@ -121,7 +121,7 @@ if __name__ == "__main__":
                     # Align the trajectory - to first frame
                     traj_aligned = traj.superpose(traj, 0)
                     # Load in the COLVAR file
-                    clv = colvar(f'{wd}/{system}+{lig}_{rep}_GISMO.colvar').drop([1]).reset_index(drop=True)
+                    clv = colvar(f'{wd}/{system}+{lig}_{rep}_GISMO.colvar').drop(1).reset_index(drop=True)
                     n_frames = len(clv.index)
                     print(n_frames)
 

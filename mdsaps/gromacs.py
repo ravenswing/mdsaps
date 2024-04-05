@@ -83,7 +83,7 @@ def cut_traj(trj_path: str, tpr: str, out_path: str,
               '. Output:', error.output.decode("utf-8"))
 
 
-def gismo_colvar(wd, in_colvar='COLVAR', out_colvar='COLVAR_GISMO'):
+def gismo_colvar(wd, in_colvar='COLVAR', out_colvar='GISMO.colvar'):
     """ combine old and reweighted colvars """
     # Load in the original COLVAR
     old_col = load.colvar(f"{wd}/{in_colvar}", 'as_pandas')
