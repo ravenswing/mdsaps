@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import MDAnalysis as mda
@@ -58,16 +57,17 @@ def kmeans(u, n_clusters: int, cluster_selection: str = "backbone"):
     # cluster_selection = 'protein or resname S2P'  # full protein
     # cluster_selection = 'resname MOL'  # ligand
 
-    # n_clusters = 2
-
+    # Set up MDA ClusteringMethod for kmeans
     kmeans = clm.KMeans(n_clusters,  # no. of clusters
                         init='k-means++',  # default
                         algorithm="auto")    # default
 
+    # Run the clustering, using config default number of cores
     cluster_collection = encore.cluster(u,
                                         select=cluster_selection,
                                         method=kmeans,
                                         ncores=CORES)
+    # Gives a MDA ClusterCollection as output
     return cluster_collection
 
 
@@ -94,38 +94,38 @@ def unpack_collection(cluster_collection):
 
 
 def save_centroids(cluster_collection, u, out_dir: str, 
-                   out_name='Cluster'): 
-
-    clusters, sizes, percentages, n_frames = unpack_collection(cluster_collection)
-
+                   out_name: str = 'cluster') -> None: 
+    # Extract ordered information from ClusterCollection 
+    clusters, sizes, percentages, _ = unpack_collection(cluster_collection)
+    
+    # Save centroid as pdb, with ID and percentage labels
     for i, size in enumerate(sizes): 
         u.trajectory[clusters[i].centroid]
         with mda.Writer(f'{out_dir}/{out_name}{i}_{percentages[i]:.0f}%.pdb', u.atoms.n_atoms) as W:
             W.write(u.atoms)
 
 
-def plot_sizes(cluster_collection, out_path):
-
+def plot_sizes(cluster_collection, out_path: str) -> None: 
+    # Extract ordered information from ClusterCollection 
     _, sizes, percentages, _ = unpack_collection(cluster_collection) 
 
-    fig, ax = plt.subplots(1,1, figsize=(10,6))
-
-    x_axis = np.arange(len(sizes))
-    bar = ax.bar(x_axis, sizes, color='#089682')
-    plt.bar_label(bar, labels=[f"{x:.1f}%" for x in percentages])
-
-    ax.set_xlabel('Cluster No.')
-    ax.set_xticks(x_axis)
-    ax.set_ylabel('Cluster Sizes')
-    ax.set_ylim(0, sizes[0]+.2*sizes[0])
-    fig.savefig(out_path, bbox_inches='tight', dpi=300)
-    plt.close()
+    plot.cluster_sizes(sizes, percentages, out_path)
 
 
-def kmeans_scan(traj_path, top_path, selection, out_dir,
-                n_min: int = 2, n_max: int = 6):
-
+def kmeans_scan(traj_path: str, top_path: str, out_dir: str, 
+                cluster_selection: str = 'backbone',
+                n_min: int = 2, n_max: int = 6) -> None:
+    # Create MDA universe from trajectory.
     u = tools._init_universe([top_path, traj_path])
 
-    for n in np.arange(n_min, n_max):
-        cluster_collection = kmeans(u, n, selection)
+    # For each number of clusters...
+    for n in np.arange(n_min, n_max + 1):
+        # ...make the output directory 
+        dir = f"{out_dir}/N={n}"
+        os.makedirs(dir, exist_ok=True)
+        # ...perform the kmeans clustering to make ClusterCollection.  
+        cluster_collection = kmeans(u, n, cluster_selection)
+        # ...save the centroids as pdbs.
+        save_centroids(cluster_collection, u, dir, out_name=f'n={n}_cluster')
+        # ...plot the sizes of the clusters. 
+        plot_sizes(cluster_collection, f'{dir}/Cluster_Sizes_n={n}.png')
