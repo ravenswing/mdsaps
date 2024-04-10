@@ -103,7 +103,7 @@ def fes2D(fes_path, save_path, units='A', basins=None, funnel=None,
 
 
 def fes1D(fes_path: str, cv: str, save_path: str, 
-          cv_label: str = 'CV1', xlims = None, ylims = None, walls = None):
+          cv_label: str = 'CV1', xlims = None, ylims = None, walls = None, vlines = None):
     
     df = pd.read_table(fes_path, comment='#', sep='\s+', names=[cv, 'free', 'err'])
     # colvar = load.colvar(f"{wd}/COLVAR")
@@ -125,6 +125,10 @@ def fes1D(fes_path: str, cv: str, save_path: str,
             label = 'Walls' if i == 0 else None
             ax.fill_between(np.linspace(wall[0], wall[1]), -2, ymax, color='k', alpha=0.05, label=label)
         ax.legend(labelcolor=colours.labels)
+
+    if vlines:
+        for label, position in vlines:
+            ax.axvline(position, ls='dotted', label=label, c=colours.ax)
     
     ax.tick_params(color=colours.ax, labelcolor=colours.ax)
     for spine in ax.spines.values():

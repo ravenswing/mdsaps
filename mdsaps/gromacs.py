@@ -9,6 +9,7 @@
 import logging
 import pandas as pd
 import subprocess
+from pathlib import Path
 
 from . import load
 
@@ -36,6 +37,7 @@ def run_sumhills(wd, out_name, name='HILLS', stride=None, cv=None):
         st_flags = ["--stride", f"{stride}"]
     else:
         st_flags = []
+        out_name = f"{out_name}_FES"
 
     # Create 1D FES if cv is specified, add flag for plumed command (300K!)
     cv_flags = ["--idw", f"{cv}", "--kt", "2.49"] if cv is not None else []
@@ -43,7 +45,7 @@ def run_sumhills(wd, out_name, name='HILLS', stride=None, cv=None):
     # Construct plumed command
     cmd = ['plumed', 'sum_hills',
            "--hills", hills_file,
-           "--outfile", f"{wd}/{out_name}_FES",
+           "--outfile", f"{wd}/{out_name}",
            "--mintozero"] + st_flags + cv_flags
     log.debug(f"{' '.join(cmd)}")
 
@@ -53,6 +55,25 @@ def run_sumhills(wd, out_name, name='HILLS', stride=None, cv=None):
     except subprocess.CalledProcessError as error:
         print('Error code:', error.returncode,
               '. Output:', error.output.decode("utf-8"))
+
+
+def sumhills_convergence(wd, out_name, every=50, name='HILLS', cv=None,
+                         new_dir='convergence', overwrite=True):
+
+    run_sumhills(wd, out_name=f"{out_name}_", stride=every/0.002, name=name, cv=cv)
+    
+    old_dir_path = f"{wd}/fes" 
+    new_dir_path = f"{wd}/{new_dir}" 
+    if overwrite and Path(new_dir_path).exists():
+        print('removing')
+        subprocess.run(f"rm {new_dir_path}/*.dat", shell=True)
+
+    Path(old_dir_path).replace(Path(new_dir_path))
+     
+    for fes in Path(new_dir_path).glob('*.dat'):
+        fes_number = int(str(fes.stem).split('_')[-1])
+        new_path = fes.with_stem(f"{'_'.join(str(fes.stem).split('_')[:-1])}_{(fes_number + 1) * every}")
+        fes.replace(new_path)
 
 
 def cut_traj(trj_path: str, tpr: str, out_path: str,
