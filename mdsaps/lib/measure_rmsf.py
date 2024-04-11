@@ -5,13 +5,17 @@ import pandas as pd
 import argparse
 
 
-def measure_rmsf(top_path, trj_path, measure="backbone", select="protein",
-                 per_res=True, debug=False):
-    if debug: print('measure', measure)
+def measure_rmsf(
+    top_path, trj_path, measure="backbone", select="protein", per_res=True, debug=False
+):
+    if debug:
+        print("measure", measure)
     # Load new universe (N.B. TO MEMORY!)
-    if debug: print('loading u')
+    if debug:
+        print("loading u")
     u = mda.Universe(top_path, trj_path, in_memory=True)
-    if debug: print('finished loading u')
+    if debug:
+        print("finished loading u")
 
     # Check that trajectory is not too large (for RAM = 16 GB)
 
@@ -22,63 +26,67 @@ def measure_rmsf(top_path, trj_path, measure="backbone", select="protein",
     # 1) the trajectory may be split across periodic boundaries,
     #    so we first make the protein whole and center it in the
     #    box using on-the-fly transformations
-    if debug: print('making transformations')
+    if debug:
+        print("making transformations")
     not_protein = u.select_atoms(f"not ({select})")
-    transforms = [trans.center_in_box(protein, wrap=True),
-                  trans.wrap(not_protein)]
+    transforms = [trans.center_in_box(protein, wrap=True), trans.wrap(not_protein)]
     u.trajectory.add_transformations(*transforms)
-    if debug: print('finished transformations')
+    if debug:
+        print("finished transformations")
 
     # 2) fit to the initial frame to get a better average structure
     #    (the trajectory is changed in memory)
-    if debug: print('pre-aligning')
-    prealigner = align.AlignTraj(u, u, select="protein and name CA",
-                                 in_memory=True).run()
-    if debug: print('finished pre-aligning')
+    if debug:
+        print("pre-aligning")
+    prealigner = align.AlignTraj(
+        u, u, select="protein and name CA", in_memory=True
+    ).run()
+    if debug:
+        print("finished pre-aligning")
     # 3) determine the average structure to use as a reference for
     #    the RMSF calculations, and align to the reference
-    if debug: print('aligning')
+    if debug:
+        print("aligning")
     ref_coordinates = u.trajectory.timeseries(asel=protein).mean(axis=1)
-    reference = mda.Merge(protein).load_new(ref_coordinates[:, None, :],
-                                            order="afc")
-    aligner = align.AlignTraj(u, reference,
-                              select="protein and name CA",
-                              in_memory=True).run()
-    if debug: print('finished aligning')
+    reference = mda.Merge(protein).load_new(ref_coordinates[:, None, :], order="afc")
+    aligner = align.AlignTraj(
+        u, reference, select="protein and name CA", in_memory=True
+    ).run()
+    if debug:
+        print("finished aligning")
     # 4) run the RMSF for the selected set of atoms
     rmsf_atoms = protein.select_atoms(measure)
     rmsf = rms.RMSF(rmsf_atoms, verbose=True).run()
     # 5) return rmsf values in a dataframe, averaging for residue
     #    number if the per_res flag is given.
-    df = pd.DataFrame({'res': rmsf_atoms.resnums, 'rmsf': rmsf.results.rmsf})
+    df = pd.DataFrame({"res": rmsf_atoms.resnums, "rmsf": rmsf.results.rmsf})
 
-    return pd.DataFrame(df.groupby('res').rmsf.mean()) if per_res else df
+    return pd.DataFrame(df.groupby("res").rmsf.mean()) if per_res else df
 
 
 def main():
     parser = argparse.ArgumentParser(
-                        prog='ProgramName',
-                        description='What the program does',
-                        epilog='Text at the bottom of help')
-    parser.add_argument('top_path', type=str)
-    parser.add_argument('trj_path', type=str)
-    parser.add_argument('out_path', type=str)
-    parser.add_argument('measure', type=str)
-    parser.add_argument('select', type=str)
-    parser.add_argument('-res', action="store_true")
-    parser.add_argument('-debug', action="store_true", required=False)
+        prog="ProgramName",
+        description="What the program does",
+        epilog="Text at the bottom of help",
+    )
+    parser.add_argument("top_path", type=str)
+    parser.add_argument("trj_path", type=str)
+    parser.add_argument("out_path", type=str)
+    parser.add_argument("measure", type=str)
+    parser.add_argument("select", type=str)
+    parser.add_argument("-res", action="store_true")
+    parser.add_argument("-debug", action="store_true", required=False)
     args = parser.parse_args()
     debug = args.debug
 
-    new_data = measure_rmsf(args.top_path,
-                            args.trj_path,
-                            args.measure,
-                            args.select,
-                            args.res,
-                            debug)
+    new_data = measure_rmsf(
+        args.top_path, args.trj_path, args.measure, args.select, args.res, debug
+    )
 
-    if debug: print(f"Writing RMSF data to {args.out_path}")
-    new_data.to_hdf(args.out_path, key='df')
+    if debug:
+        print(f"Writing RMSF data to {args.out_path}")
+    new_data.to_hdf(args.out_path, key="df")
     """
     PREVIOUS METHODOLOGY
 
@@ -112,5 +120,5 @@ def main():
     """
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

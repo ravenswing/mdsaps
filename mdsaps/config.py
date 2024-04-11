@@ -1,4 +1,3 @@
-
 # GROMACS Executable on your system:
 GMX = "gmx_mpi"
 
