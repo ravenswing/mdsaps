@@ -39,7 +39,6 @@ def selective_traj(traj_path: str, top_path: str, out_path: str, indices) -> Non
 
     initial = tools._init_universe([top_path, traj_path])
     print(f"Trajectory Frames: {initial.trajectory.n_frames}")
-
     with mda.Writer(out_path, initial.atoms.n_atoms) as W:
         for idx in indices:
             initial.trajectory[idx]
@@ -113,18 +112,39 @@ def unpack_collection(cluster_collection):
 
 
 def save_centroids(
-    cluster_collection, u, out_dir: str, out_name: str = "cluster"
+    cluster_collection,
+    u,
+    out_dir: str,
+    out_name: str = "cluster",
+    pdbs: bool = True,
+    timestamp_csv: bool = True,
+    _warn=True,
 ) -> None:
     # Extract ordered information from ClusterCollection
     clusters, sizes, percentages, _ = unpack_collection(cluster_collection)
 
     # Save centroid as pdb, with ID and percentage labels
-    for i, size in enumerate(sizes):
-        u.trajectory[clusters[i].centroid]
-        with mda.Writer(
-            f"{out_dir}/{out_name}{i}_{percentages[i]:.0f}%.pdb", u.atoms.n_atoms
-        ) as W:
-            W.write(u.atoms)
+    if pdbs:
+        for i, size in enumerate(sizes):
+            u.trajectory[clusters[i].centroid]
+            with mda.Writer(
+                f"{out_dir}/{out_name}{i}_{percentages[i]:.0f}%.pdb", u.atoms.n_atoms
+            ) as W:
+                W.write(u.atoms)
+
+    if timestamp_csv:
+        if _warn:
+            print(
+                "!!! WARNING: MDA Clustering removes original timestamp information !!!"
+            )
+            print(
+                "    --> Solution Re-initialise initial universe in order to get a\n        correct timestamp csv."
+            )
+        lines = ["Cluster No.,Centroid ID,Initial Trajectory Timestamp\n"]
+        for i, c in enumerate(clusters):
+            lines.append(f"{i},{c.centroid},{u.trajectory[c.centroid].time}\n")
+        with open(f"{out_dir}/centroid_timestamps.csv", "w") as f:
+            f.writelines(lines)
 
 
 def plot_sizes(cluster_collection, out_path: str) -> None:
@@ -132,6 +152,12 @@ def plot_sizes(cluster_collection, out_path: str) -> None:
     _, sizes, percentages, _ = unpack_collection(cluster_collection)
 
     plot.cluster_sizes(sizes, percentages, out_path)
+
+
+def convert_timestamps(
+    cluster_collection,
+):
+    print("AAAAAAAAAAAAAAAAAAAAAAAAA")
 
 
 def kmeans_scan(
@@ -152,7 +178,12 @@ def kmeans_scan(
         os.makedirs(dir, exist_ok=True)
         # ...perform the kmeans clustering to make ClusterCollection.
         cluster_collection = kmeans(u, n, cluster_selection)
+        # running the clustering affects the universe e.g. removes original time information
+        # re-initialise to preserve and save
+        u = tools._init_universe([top_path, traj_path])
         # ...save the centroids as pdbs.
-        save_centroids(cluster_collection, u, dir, out_name=f"n={n}_cluster")
+        save_centroids(
+            cluster_collection, u, dir, out_name=f"n={n}_cluster", _warn=False
+        )
         # ...plot the sizes of the clusters.
         plot_sizes(cluster_collection, f"{dir}/Cluster_Sizes_n={n}.png")
