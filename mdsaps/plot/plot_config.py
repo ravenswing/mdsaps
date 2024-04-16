@@ -24,4 +24,12 @@ colour_dict = {
     "MK87": ["#264653", "#13242A"],
 }
 
-nspc = SimpleNamespace(**colour_dict)
+size_dict = {
+    "ticks": 10,
+    "labels": 12,
+    "legend": 10,
+    "title": 16,
+}
+
+colours = SimpleNamespace(**colour_dict)
+sizes = SimpleNamespace(**size_dict)

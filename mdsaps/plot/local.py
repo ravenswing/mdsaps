@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from . import plot_config as config
 
-colours = config.nspc
+colours = config.colours
+sizes = config.sizes
 
 
 def cluster_sizes(sizes, percentages, out_path):
@@ -14,12 +15,14 @@ def cluster_sizes(sizes, percentages, out_path):
     bar = ax.bar(x_axis, sizes, color=colours.default)
     plt.bar_label(bar, labels=[f"{x:.1f}%" for x in percentages], c=colours.labels)
 
-    ax.set_xlabel("Cluster No.", c=colours.labels)
+    ax.set_xlabel("Cluster No.", c=colours.labels, fontsize=sizes.labels)
     ax.set_xticks(x_axis)
-    ax.set_ylabel("Cluster Sizes", c=colours.labels)
+    ax.set_ylabel("Cluster Sizes", c=colours.labels, fontsize=sizes.labels)
     ax.set_ylim(0, sizes[0] + 0.2 * sizes[0])
 
-    ax.tick_params(color=colours.ax, labelcolor=colours.ax)
+    ax.tick_params(
+        axis="both", color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks
+    )
     for axis in ["bottom", "left"]:
         ax.spines[axis].set_edgecolor(colours.ax)
     for border in ["top", "right"]:

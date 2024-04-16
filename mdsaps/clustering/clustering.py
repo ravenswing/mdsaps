@@ -6,7 +6,6 @@ from MDAnalysis.analysis.encore.clustering import ClusteringMethod as clm
 from pathlib import Path
 
 from .. import tools, plot, load
-from ..config import *
 
 
 def get_indices(colvar_path: str, cv_bounds, colvar_stride: int = None):
