@@ -24,7 +24,7 @@ def fes2D(
     funnel=None,
     basin_lables=None,
     xlims=None,
-    ylims=None, 
+    ylims=None,
     labels=["CV1", "CV2"],
 ):
     """
@@ -218,14 +218,16 @@ def cvs(
             ax[i].set_xlim(xlims)
         if ylims:
             ax[i].set_ylim(ylims)
-    
+
         ax[i].set_xlabel("Time (ns)", c=colours.labels, fontsize=sizes.labels)
         label = cv_labels[i] if cv_labels else cv
         ax[i].set_ylabel(label, c=colours.labels, fontsize=sizes.labels)
-        ax[i].tick_params(axis='both', color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks)
+        ax[i].tick_params(
+            axis="both", color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks
+        )
         for spine in ax[i].spines.values():
             spine.set_edgecolor(colours.ax)
-        
+
         if any([mean, initial]):
             ax[i].legend(labelcolor=colours.labels, labelsize=sizes.legend)
     fig.suptitle(title, fontsize=sizes.title, c=colours.labels)
@@ -273,7 +275,9 @@ def hills(
     ax.set_xlabel("Time (ns)", c=colours.labels, fontsize=sizes.labels)
     ax.set_ylabel("Hill Height", c=colours.labels, fontsize=sizes.labels)
     ax.set_title(f"{title}", c=colours.labels, fontsize=sizes.title)
-    ax.tick_params(axis='both', color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks)
+    ax.tick_params(
+        axis="both", color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks
+    )
     for spine in ax.spines.values():
         spine.set_edgecolor(colours.ax)
 
@@ -369,12 +373,13 @@ def convergence(
                 alpha=0.05,
                 label=label,
             )
-    
 
     ax.legend(labelcolor=colours.labels, labelsize=sizes.legend)
-    ax.tick_params(axis='both', color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks)
+    ax.tick_params(
+        axis="both", color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks
+    )
     for spine in ax.spines.values():
-        spine.set_edgecolor(colours.ax, 
+        spine.set_edgecolor(colours.ax)
     ax.set_xlabel(cv_label, c=colours.labels, fontsize=sizes.labels)
     ax.set_ylabel("Free Energy (kcal/mol)", c=colours.labels, fontsize=sizes.labels)
     ax.set_title(title, c=colours.labels, fontsize=sizes.title)

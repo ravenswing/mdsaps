@@ -249,10 +249,10 @@ def measure_rmsf(
 ):
     res = "-res" if per_res else ""
     # Get the directory that this file is in.
-    s_path = "/".join(__file__.split("/")[:-1])
+    lib_path = f"{'/'.join(__file__.split('/')[:-1])}/lib"
     cmd = [
         "python",
-        f"{s_path}/measure_rmsf.py",
+        f"{lib_path}/measure_rmsf.py",
         top_path,
         trj_path,
         "/tmp/rmsf.h5",

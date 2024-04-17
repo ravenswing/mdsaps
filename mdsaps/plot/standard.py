@@ -8,9 +8,72 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from . import plot_config as config
+from ..tools import usym
 
-clr = config.colour_dict
-c = config.default_colour
+colours = config.colours
+sizes = config.sizes
+
+
+def rolling_mean(
+    x,
+    y,
+    save_path,
+    labels,
+    title="Rolling Mean Plot",
+    raw_data=None,
+    xlims=None,
+    ylims=None,
+    mean=False,
+    initial=False,
+    window=1000,
+):
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6), layout="constrained")
+
+    if raw_data == "scatter":
+        ax.scatter(x, y, c=colours.default, s=8, alpha=0.2, label="Raw Data")
+    elif raw_data == "line":
+        ax.plot(x, y, c=colours.default, lw=0.5, alpha=0.2, label="Raw Data")
+
+    rolling_average = y.rolling(window, center=True).mean()
+    rolling_stdev = y.rolling(window, center=True).std()
+
+    upr = rolling_average.add(rolling_stdev)
+    lwr = rolling_average.sub(rolling_stdev)
+
+    ax.plot(x, rolling_average, c=colours.default, lw=0.8, label="Rolling Mean")
+    ax.fill_between(x, upr.values, lwr.values, alpha=0.3, label="Std. Dev.")
+
+    if mean:
+        ax.axhline(
+            y.mean(),
+            ls="--",
+            label=f"Mean = {y.mean():.1f} {usym('pm')} {y.std():.1f}",
+            c=colours.highlight,
+        )
+    if initial:
+        ax.axhline(y.iloc[0], ls="dotted", label="Initial", c=colours.ax)
+    if xlims:
+        ax.set_xlim(xlims)
+    if ylims:
+        ax.set_ylim(ylims)
+
+    ax.set_xlabel(labels[0], c=colours.labels, fontsize=sizes.labels)
+    ax.set_ylabel(labels[1], c=colours.labels, fontsize=sizes.labels)
+    ax.tick_params(
+        axis="both", color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks
+    )
+    for axis in ["bottom", "left"]:
+        ax.spines[axis].set_edgecolor(colours.ax)
+    for border in ["top", "right"]:
+        ax.spines[border].set_visible(False)
+
+    if any([mean, initial]):
+        ax.legend(labelcolor=colours.labels, fontsize=sizes.legend)
+    fig.suptitle(title, fontsize=sizes.title, c=colours.labels)
+    fig.savefig(
+        save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
+    )
+    plt.close()
 
 
 def multiplot(
@@ -119,7 +182,7 @@ def all_columns(
         plt.close()
 
 
-def xvg_line(xvg_data, ax, col, line="solid", rollavg=True, label=None):
+def xvg_line(xvg_data, ax, col, line="solid", label=None):
     head = xvg_data.columns.values.tolist()
     xvg_data["mean"] = xvg_data[head[1]].rolling(500, center=True).mean()
     y1 = xvg_data[head[1]].values * 10
