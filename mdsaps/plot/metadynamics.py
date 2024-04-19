@@ -229,7 +229,7 @@ def cvs(
             spine.set_edgecolor(colours.ax)
 
         if any([mean, initial]):
-            ax[i].legend(labelcolor=colours.labels, labelsize=sizes.legend)
+            ax[i].legend(labelcolor=colours.labels, fontsize=sizes.legend)
     fig.suptitle(title, fontsize=sizes.title, c=colours.labels)
     fig.savefig(
         save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
@@ -374,7 +374,7 @@ def convergence(
                 label=label,
             )
 
-    ax.legend(labelcolor=colours.labels, labelsize=sizes.legend)
+    ax.legend(labelcolor=colours.labels, fontsize=sizes.legend)
     ax.tick_params(
         axis="both", color=colours.ax, labelcolor=colours.ax, labelsize=sizes.ticks
     )
