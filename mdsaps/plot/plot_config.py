@@ -26,9 +26,9 @@ colour_dict = {
 
 size_dict = {
     "ticks": 10,
-    "labels": 12,
+    "labels": 11,
     "legend": 10,
-    "title": 16,
+    "title": 12,
 }
 
 colours = SimpleNamespace(**colour_dict)
