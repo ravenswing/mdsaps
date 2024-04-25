@@ -20,6 +20,7 @@ from multiprocessing import Pool
 from functools import partial
 from numbers import Number
 from MDAnalysis.analysis import rms
+from pathlib import Path
 
 # from parmed import gromacs, amber, load_file
 import parmed
@@ -159,6 +160,51 @@ def _init_universe(in_str):
     # If not any of the above raise an error
     else:
         raise ValueError("Structure not recognised")
+
+
+def slice_traj(
+    traj_path: str,
+    top_path: str,
+    out_path: str,
+    select: str = None,
+    indices=None,
+    pdb_path: str = None,
+) -> None:
+    top_path = (
+        str(Path(traj_path).parent / Path(top_path))
+        if "/" not in top_path
+        else top_path
+    )
+    out_path = (
+        str(Path(traj_path).parent / Path(out_path))
+        if "/" not in out_path
+        else out_path
+    )
+    initial = _init_universe([top_path, traj_path])
+
+    if select:
+        out_group = initial.select_atoms(select)
+    else:
+        out_group = initial.atoms
+
+    if pdb_path:
+        pdb_path = (
+            str(Path(traj_path).parent / Path(pdb_path))
+            if "/" not in pdb_path
+            else pdb_path
+        )
+        initial.trajectory[0]
+        out_group.write(pdb_path)
+
+    if indices is None:
+        with mda.Writer(out_path, out_group.n_atoms) as W:
+            for ts in initial.trajectory:
+                W.write(out_group)
+    else:
+        with mda.Writer(out_path, out_group.n_atoms) as W:
+            for idx in indices:
+                initial.trajectory[idx]
+                W.write(out_group)
 
 
 def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
