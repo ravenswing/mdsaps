@@ -6,6 +6,7 @@ from MDAnalysis.analysis.encore.clustering import ClusteringMethod as clm
 from pathlib import Path
 
 from .. import tools, plot, load
+from ..config import CORES
 
 
 def get_indices(colvar_path: str, cv_bounds, colvar_stride: int = None):
@@ -64,7 +65,8 @@ def align_traj(
 
     aligner = align.AlignTraj(
         mobile, reference, select=selection, filename=out_path
-    ).run()
+    )
+    aligner.run()
 
 
 def kmeans(u, n_clusters: int, cluster_selection: str = "backbone"):

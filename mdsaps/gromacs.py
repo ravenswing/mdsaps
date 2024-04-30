@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 
 from . import load
+from .config import GMX
 
 log = logging.getLogger(__name__)
 log.info("G.O.A.T. (Gromacs Organisation n' Analysis Tools) Loaded")
@@ -113,7 +114,7 @@ def cut_traj(
         "Backbone",
         out_group,
         "|",
-        "gmx_mpi",
+        GMX,
         "trjconv ",
         "-s",
         tpr,
@@ -301,7 +302,7 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx="i.ndx", out_group="Syste
         "echo",
         f"{out_group}",
         "|",
-        "gmx_mpi",
+        GMX,
         "trjconv",
         "-f",
         trj_path,
@@ -327,7 +328,7 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx="i.ndx", out_group="Syste
         "Protein",
         f"{out_group}",
         "|",
-        "gmx_mpi",
+        GMX,
         "trjconv",
         "-f",
         "/tmp/tmp1.xtc",
@@ -353,7 +354,7 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx="i.ndx", out_group="Syste
         "Protein",
         f"{out_group}",
         "|",
-        "gmx_mpi",
+        GMX,
         "trjconv",
         "-f",
         "/tmp/tmp2.xtc",
@@ -391,7 +392,7 @@ def concat_traj(directory: str, stem: str = None, out_path: str = "full_traj.xtc
     # TODO: check that all the names of the inputs are the same:
     #       i.e. there are not name.part000*.xtc AND name.xtc
     file_glob = f"{directory}/{stem}*.{ext}" if stem else f"{directory}/*.{ext}"
-    cmd = ["gmx_mpi", "trjcat", "-f", file_glob, "-o", f"{directory}/{out_path}"]
+    cmd = [GMX, "trjcat", "-f", file_glob, "-o", f"{directory}/{out_path}"]
     log.debug(f"{' '.join(cmd)}")
     try:
         subprocess.run(" ".join(cmd), check=True, shell=True, stdout=subprocess.DEVNULL)

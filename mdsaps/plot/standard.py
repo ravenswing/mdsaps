@@ -162,7 +162,7 @@ def all_columns(
         upr = mean.add(stdev)
         lwr = mean.sub(stdev)
 
-        ax.plot(df.index * 0.001, mean, c=c, lw=0.8)
+        ax.plot(df.index * 0.001, mean, c=colours.default, lw=0.8)
         ax.fill_between(df.index * 0.001, upr.values, lwr.values, alpha=0.2)
 
         if hline:

@@ -16,7 +16,8 @@ def aligned_pdb(wd: str, ref_path: str) -> None:
     ref = _init_universe(ref_path)
     aligner = align.AlignTraj(
         mobile, ref, select="backbone", filename=f"{wd}/aligned.pdb"
-    ).run()
+    )
+    aligner.run()
 
 
 def aligned_dcd(wd: str, xtc_name: str, ref_path: str) -> None:
@@ -31,7 +32,8 @@ def aligned_dcd(wd: str, xtc_name: str, ref_path: str) -> None:
     ref = _init_universe(ref_path)
     aligner = align.AlignTraj(
         mobile, ref, select="backbone", filename=f"{wd}/aligned.dcd"
-    ).run()
+    )
+    aligner.run()
 
 
 def pocket_select(wd, out_name):
@@ -105,33 +107,48 @@ def main():
             for pdb in systems[system]:
                 for rep in ["R1", "R2", "R3", "R4"]:
                     wd = f"{DATA_DIR}/{method}/{system}+{pdb}/{rep}"
-                    """
                     aligned_pdb(wd, ref)
                     aligned_dcd(wd, f"{system}+{pdb}_{rep}_GISMO.xtc", ref)
 
                     try:
-                        subprocess.run('rm tmp_*', cwd=wd, shell=True, check=True)
+                        subprocess.run("rm tmp_*", cwd=wd, shell=True, check=True)
                     except subprocess.CalledProcessError as error:
-                        print('Error code:', error.returncode,
-                            '. Output:', error.output.decode("utf-8"))
+                        print(
+                            "Error code:",
+                            error.returncode,
+                            ". Output:",
+                            error.output.decode("utf-8"),
+                        )
 
                     pocket_select(wd, f"{system}+{pdb}_{rep}")
 
                     # TODO -> COPY FILES
                     try:
-                        subprocess.run(f'cp *_freq_iso_* {out_dir}', cwd=wd,
-                                    shell=True, check=True)
+                        subprocess.run(
+                            f"cp *_freq_iso_* {out_dir}", cwd=wd, shell=True, check=True
+                        )
                     except subprocess.CalledProcessError as error:
-                        print('Error code:', error.returncode,
-                            '. Output:', error.output.decode("utf-8"))
+                        print(
+                            "Error code:",
+                            error.returncode,
+                            ". Output:",
+                            error.output.decode("utf-8"),
+                        )
                     # TODO -> COPY FILES
                     try:
-                        subprocess.run(f'cp *_atom_pdens* {out_dir}', cwd=wd,
-                                    shell=True, check=True)
+                        subprocess.run(
+                            f"cp *_atom_pdens* {out_dir}",
+                            cwd=wd,
+                            shell=True,
+                            check=True,
+                        )
                     except subprocess.CalledProcessError as error:
-                        print('Error code:', error.returncode,
-                            '. Output:', error.output.decode("utf-8"))
-                    """
+                        print(
+                            "Error code:",
+                            error.returncode,
+                            ". Output:",
+                            error.output.decode("utf-8"),
+                        )
 
                     pocket_volume(
                         wd,

@@ -40,9 +40,11 @@ def measure_rmsf(
         print("pre-aligning")
     prealigner = align.AlignTraj(
         u, u, select="protein and name CA", in_memory=True
-    ).run()
+    )
+    prealigner.run()
     if debug:
         print("finished pre-aligning")
+    
     # 3) determine the average structure to use as a reference for
     #    the RMSF calculations, and align to the reference
     if debug:
@@ -51,12 +53,15 @@ def measure_rmsf(
     reference = mda.Merge(protein).load_new(ref_coordinates[:, None, :], order="afc")
     aligner = align.AlignTraj(
         u, reference, select="protein and name CA", in_memory=True
-    ).run()
+    )
+    aligner.run()
     if debug:
         print("finished aligning")
+    
     # 4) run the RMSF for the selected set of atoms
     rmsf_atoms = protein.select_atoms(measure)
     rmsf = rms.RMSF(rmsf_atoms, verbose=True).run()
+    
     # 5) return rmsf values in a dataframe, averaging for residue
     #    number if the per_res flag is given.
     df = pd.DataFrame({"res": rmsf_atoms.resnums, "rmsf": rmsf.results.rmsf})

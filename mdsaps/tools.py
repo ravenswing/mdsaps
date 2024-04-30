@@ -95,7 +95,7 @@ def amber_to_gromacs(top_file: str, crd_file: str) -> None:
     assert crd_file.split(".")[-1] in ["rst7", "ncrst", "restrt"], "ERROR"
 
     # Load the system (from ParmEd)
-    parmed.amber = load_file(top_file, crd_file)
+    parmed.amber.load_file(top_file, crd_file)
     # Write the new Gromacs topology file (.top)
     parmed.amber.save(f"{top_file.split('.')[0]}_a2g.top", overwrite=True)
     # Write the new Gromacs coordinate file (.gro)

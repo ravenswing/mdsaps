@@ -37,9 +37,9 @@ def _run_tleap(wd, input_file):
     print(f"COMPLETED | TLEAP with input:  {input_file}")
 
 
-def build_system(wd, lig_param_path, complex_path, out_name):
+def build_system(wd, lig_param_path, complex_path, out_name, scripts):
     # Add final protein res. no. to min0 input (N.B. inplace!)
-    with open(f"{SCRIPT_DIR}/template_tleap.in", "r") as file:
+    with open(f"{scripts}/template_tleap.in", "r") as file:
         lines = file.read()
         lines = lines.replace("LIG_PREP", lig_param_path + ".prep")
         lines = lines.replace("LIG_FRCMOD", lig_param_path + ".frcmod")
@@ -113,12 +113,12 @@ def setup_minimisation(wd, pdb_filename, nm_pos_in_path, restraints=False):
         file.write(lines)
 
 
-def make_restraints_list(wd, txt_in):
+def make_restraints_list(wd, name, txt_in):
     # Create new list (IS THIS NEEDED???)
     new_file = ["C=O"]
     # Read in restraints .csv and select the correct set
     df = pd.read_table(txt_in, sep=",", header=0)
-    df = df.loc[df.complex == f"{FN}_dry"]
+    df = df.loc[df.complex == f"{name}_dry"]
     # Create a block for each restraint being applied from the .csv values
     for z, restr in df.iterrows():
         # name of restraint
@@ -156,13 +156,13 @@ def run_minimisation(wd):
         )
 
 
-def make_reducing_restraints(wd, txt_in):
+def make_reducing_restraints(wd, name, txt_in):
     for k in [10, 5, 2.5]:
         # Create new list (IS THIS NEEDED???)
         new_file = ["C=O"]
         # Read in the restraints .csv and select the correct set
         df = pd.read_table(txt_in, sep=",", header=0)
-        df = df.loc[df.complex == f"{FN}_dry"]
+        df = df.loc[df.complex == f"{name}_dry"]
         # Create block for each restraint being applied using numbers from .csv
         for z, restr in df.iterrows():
             # name of restraint
@@ -190,12 +190,12 @@ def make_reducing_restraints(wd, txt_in):
             f.write("\n".join(new_file))
 
 
-def transfer(wd):
-    path = "/".join(wd.split("/")[-2:])
+def transfer(local_dir, remote_dir):
+    path = "/".join(local_dir.split("/")[-2:])
     print(path)
     try:
         subprocess.run(
-            ["rsync" "-avzhPu", f"{wd}/restraints_k*", f"{SVR_DIR}/{path}/"], check=True
+            ["rsync" "-avzhPu", f"{local_dir}/restraints_k*", f"{remote_dir}/{path}/"], check=True
         )
     except subprocess.CalledProcessError as error:
         print(
@@ -206,9 +206,9 @@ def transfer(wd):
 def autoimage_file(top_file, crd_file):
     """Convert a system from Amber --> PDB using PyTraj"""
     # Check that the topology has a readable extension
-    assert top_file.split(".")[-1] in ["parm7", "prmtop"], "ERROR"
+    assert top_file.split(".")[-1] in ["parm7", "prmtop"], "Topology File must be of type: parm7 or prmtop"
     # Check that the coordinate file has a readable extension
-    assert crd_file.split(".")[-1] in ["rst7", "ncrst", "restrt"], "ERROR"
+    assert crd_file.split(".")[-1] in ["rst7", "ncrst", "restrt"], "Coordinate File must be of type: rst7, ncrst, restrt"
 
     # Load the amber structure into PyTraj
     to_convert = pt.load(crd_file, top_file)
@@ -223,7 +223,7 @@ def main():
     POCKETS = ["Tunnel-Front", "Tunnel-Back", "Active-Site"]
     DATA_DIR = "/home/rhys/Dropbox/RESEARCH/AA_RHYS/BB_BECK/" "SHIP_uMD_Prep/Lig21_uMD"
 
-    SCRIPT_DIR = "/home/rhys/phd_tools/simulation_files/" "submission_scripts/Amber/md"
+    # SCRIPT_DIR = "/home/rhys/phd_tools/simulation_files/" "submission_scripts/Amber/md"
 
     # MINIMISATION
     for pocket in POCKETS:

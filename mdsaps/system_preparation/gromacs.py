@@ -14,9 +14,11 @@ from itertools import chain
 import numpy as np
 import parmed as pmd
 import pytraj as pt
+from pathlib import Path
 
 from ..tools import format_pdb
 
+lib_directory = Path.cwd().joinpath("lib", "auxiliary_scripts")
 
 def make_dirs(name, sys, lig):
     # Make the working directory
@@ -81,8 +83,8 @@ def check_atom_order(pdb_file, prep_file):
     return atm_ord1 == atm_ord2
 
 
-def run_tleap(wd, lig, pdb_path, PARM_DIR):
-    lig_params = f"{PARM_DIR}/{lig}"
+def run_tleap(wd, lig, pdb_path, parm_dir):
+    lig_params = f"{parm_dir}/{lig}"
 
     ffi_lines = "source leaprc.gaff2"
     lig_lines = (
@@ -230,13 +232,13 @@ def run_prep(out_dir, sys, lig=None, dif_size=False, ngroup=None):
     # TODO -> copy files
     # Copy the input scripts
     try:
-        subprocess.run(["cp", f"{PREP_INPUTS}/prep_apo.sh", out_dir], check=True)
+        subprocess.run(["cp", f"{lib_directory}/prep_apo.sh", out_dir], check=True)
     except subprocess.CalledProcessError as error:
         print(
             "Error code:", error.returncode, ". Output:", error.output.decode("utf-8")
         )
     try:
-        subprocess.run(["cp", f"{PREP_INPUTS}/prep.mdp", out_dir], check=True)
+        subprocess.run(["cp", f"{lib_directory}/prep.mdp", out_dir], check=True)
     except subprocess.CalledProcessError as error:
         print(
             "Error code:", error.returncode, ". Output:", error.output.decode("utf-8")
@@ -354,28 +356,6 @@ def setup_minim(dd, sys, lig=None, REMOTE=None):
             )
 
 
-def next_step(ndir):
-    for sys in SYSTS:
-        for lig in LIGS:
-            try:
-                subprocess.run(
-                    [
-                        "rsync",
-                        "-avzhPu",
-                        f"{SCRIPT_DIR}/{ndir}",
-                        f"{REMOTE}/{sys}+{lig}/",
-                    ],
-                    check=True,
-                )
-            except subprocess.CalledProcessError as error:
-                print(
-                    "Error code:",
-                    error.returncode,
-                    ". Output:",
-                    error.output.decode("utf-8"),
-                )
-
-
 def make_plumed(source_dat, ref_pdb, out_dat, ligID, p0, p1, wrap_centre=None):
     """
     INPUTS:
@@ -481,11 +461,11 @@ def make_plumed(source_dat, ref_pdb, out_dat, ligID, p0, p1, wrap_centre=None):
         f.writelines(lines)
 
 
-def split_pdb(init_pdb):
+def split_pdb(init_pdb, out_dir):
     pdb = pt.load(init_pdb)
     ligN = pdb.top.n_residues
-    pt.write_traj(f"{OUT_DIR}/protein.pdb", pdb[f":1-{ligN-1}"], overwrite=True)
-    pt.write_traj(f"{OUT_DIR}/ligand.pdb", pdb[f":{ligN}"], overwrite=True)
+    pt.write_traj(f"{out_dir}/protein.pdb", pdb[f":1-{ligN-1}"], overwrite=True)
+    pt.write_traj(f"{out_dir}/ligand.pdb", pdb[f":{ligN}"], overwrite=True)
 
 
 def make_readable_gro(gro_path, top_path, tpr=None, out_path=None, reconstruct=False):
@@ -495,7 +475,7 @@ def make_readable_gro(gro_path, top_path, tpr=None, out_path=None, reconstruct=F
     # If no tpr is provided, use a temporary copy of the prep.mdp
     if not tpr:
         # Path for dummy .mdp file
-        tmp_mdp = f"{PREP_INPUTS}/prep.mdp"
+        tmp_mdp = f"{lib_directory}/prep.mdp"
         # Temporary file in temp dir.
         tmp_tpr = "/tmp/tmp.tpr"
         # run grompp to create tmp.tpr
@@ -623,7 +603,7 @@ def assign_weights(pdb, ligand, out_pdb=None):
     print(f"Loaded {pdb}")
 
     # Search for chain ID column in input pdb
-    chain = not [l for l in lines if "ATOM" in l][0].split()[4].isdigit()
+    chain = not [line for line in lines if "ATOM" in line][0].split()[4].isdigit()
     if chain:
         print("INFO: chain ID detected in pdb")
 
@@ -643,27 +623,27 @@ def assign_weights(pdb, ligand, out_pdb=None):
         ):
             lines[i] = "DELETORiOUS"
         else:
-            l = lines[i].split()
+            columns = lines[i].split()
             # print(l)
-            if l[3] == ligand:
-                if l[-1] == "H":
-                    l[0] = "DELETORiOUS"
+            if columns[3] == ligand:
+                if columns[-1] == "H":
+                    columns[0] = "DELETORiOUS"
                 else:
-                    l[-3] = "0.00"
-                    l[-2] = "1.00"
-            elif any(x == l[2] for x in ["C", "O", "N", "CA"]):
-                l[-3] = "1.00"
-                l[-2] = "0.00"
+                    columns[-3] = "0.00"
+                    columns[-2] = "1.00"
+            elif any(x == columns[2] for x in ["C", "O", "N", "CA"]):
+                columns[-3] = "1.00"
+                columns[-2] = "0.00"
             else:
-                l[0] = "DELETORiOUS"
+                columns[0] = "DELETORiOUS"
 
             # lines[i] = f'{l[0]:6}{l[1]:>5} {l[2]:^4} {l[3]:3} {l[4]} {l[5]:>3}    {l[6]:>8}{l[7]:>8}{l[8]:>8}{l[9]:>6}{l[10]:>6}\n'
-            lines[i] = format_pdb(l, chain=chain)
+            lines[i] = format_pdb(columns, chain=chain)
 
     out_file = pdb[:-4] + "_weights.pdb" if not out_pdb else out_pdb
     print(f"WRITING  {out_file}")
     with open(out_file, "w") as f:
-        f.writelines([l for l in lines if "DELETORiOUS" not in l])
+        f.writelines([line for line in lines if "DELETORiOUS" not in line])
 
 
 def bb_weights(pdb, ligand, out_pdb=None):
@@ -673,7 +653,7 @@ def bb_weights(pdb, ligand, out_pdb=None):
     print(f"Loaded {pdb}")
 
     # Search for chain ID column in input pdb
-    chain = not [l for l in lines if "ATOM" in l][0].split()[4].isdigit()
+    chain = not [line for line in lines if "ATOM" in line][0].split()[4].isdigit()
     if chain:
         print("INFO: chain ID detected in pdb")
 
@@ -687,18 +667,18 @@ def bb_weights(pdb, ligand, out_pdb=None):
         ):
             lines[i] = "DELETORiOUS"
         else:
-            l = lines[i].split()
+            columns = lines[i].split()
             # also remove ligand
-            if l[3] == ligand:
-                l[0] = "DELETORiOUS"
+            if columns[3] == ligand:
+                columns[0] = "DELETORiOUS"
             # set backbone atoms to align and measure
-            elif any(x == l[2] for x in ["C", "O", "N", "CA"]):
-                l[-3] = "1.00"
-                l[-2] = "1.00"
+            elif any(x == columns[2] for x in ["C", "O", "N", "CA"]):
+                columns[-3] = "1.00"
+                columns[-2] = "1.00"
             else:
-                l[0] = "DELETORiOUS"
+                columns[0] = "DELETORiOUS"
             # format output
-            lines[i] = format_pdb(l, chain=chain)
+            lines[i] = format_pdb(columns, chain=chain)
 
     out_file = pdb[:-4] + "_bb.pdb" if not out_pdb else out_pdb
     print(f"WRITING  {out_file}")
@@ -707,17 +687,6 @@ def bb_weights(pdb, ligand, out_pdb=None):
 
 
 def main():
-    PREP_INPUTS = (
-        "/home/rhys/phd_tools/simulation_files/" "submission_scripts/Local_Dirs/00-Prep"
-    )
-
-    OUT_DIR = "/home/rhys/Storage/ampk_metad_all_data"
-    # PARM_DIR = '/home/rhys/AMPK/Metad_Simulations/System_Setup/ligand_parms'
-    SCRIPT_DIR = (
-        "/home/rhys/phd_tools/simulation_files/"
-        "submission_scripts/MareNostrum/class_a"
-    )
-    REMOTE = "mn:/home/ub183/ub183944/scratch/ampk_replicas"
 
     SYSTS = ["a2b1", "a2b2"]
     LIGS = ["A769"]
@@ -726,7 +695,6 @@ def main():
     for system in SYSTS:
         for lig in LIGS:
             # wd = f"{OUT_DIR}/{system}+{lig}/00-Prep"
-            wd = f"{OUT_DIR}/{system}+{lig}/06-MetaD"
 
             # This is to set up the system and run uMD
             """
