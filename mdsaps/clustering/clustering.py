@@ -63,9 +63,7 @@ def align_traj(
     mobile = tools._init_universe([top_path, traj_path])
     reference = tools._init_universe(ref)
 
-    aligner = align.AlignTraj(
-        mobile, reference, select=selection, filename=out_path
-    )
+    aligner = align.AlignTraj(mobile, reference, select=selection, filename=out_path)
     aligner.run()
 
 

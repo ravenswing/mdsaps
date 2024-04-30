@@ -20,6 +20,7 @@ from ..tools import format_pdb
 
 lib_directory = Path.cwd().joinpath("lib", "auxiliary_scripts")
 
+
 def make_dirs(name, sys, lig):
     # Make the working directory
     try:
@@ -687,7 +688,6 @@ def bb_weights(pdb, ligand, out_pdb=None):
 
 
 def main():
-
     SYSTS = ["a2b1", "a2b2"]
     LIGS = ["A769"]
     # LIGS = ['SC4', 'PF739', 'MT47', 'MK87']

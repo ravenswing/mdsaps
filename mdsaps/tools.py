@@ -13,6 +13,7 @@ import logging
 import MDAnalysis as mda
 import numpy as np
 import pandas as pd
+import parmed
 import pickle
 import pytraj as pt
 import subprocess
@@ -21,10 +22,9 @@ from functools import partial
 from numbers import Number
 from MDAnalysis.analysis import rms
 from pathlib import Path
-
-# from parmed import gromacs, amber, load_file
-import parmed
 from os.path import exists
+
+from .config import CORES
 
 log = logging.getLogger(__name__)
 log.info("Traj Tools Loaded")
@@ -375,11 +375,11 @@ def calc_3D_dist(
     return np.sqrt(np.square(x2 - x1) + np.square(y2 - y1) + np.square(z2 - z1))
 
 
-def com_dist(idx, u, atom_groups):
+def com_dist_per_frame(idx, u, selections):
     u.trajectory[idx]
     # Split the trajectores to just portal & ligand atoms
-    comA = u.select_atoms(atom_groups[0]).center_of_mass()
-    comB = u.select_atoms(atom_groups[1]).center_of_mass()
+    comA = u.select_atoms(selections[0]).center_of_mass()
+    comB = u.select_atoms(selections[1]).center_of_mass()
     dist = calc_3D_dist(
         comA[0],
         comA[1],
@@ -396,8 +396,8 @@ def measure_com_dist(
 ):
     u = _init_universe([top_path, trj_path])
     indices = np.arange(u.trajectory.n_frames) if indices is None else indices
-    run_per_frame = partial(com_dist, u=u, atom_groups=[selectA, selectB])
-    with Pool(4) as worker_pool:
+    run_per_frame = partial(com_dist_per_frame, u=u, selections=[selectA, selectB])
+    with Pool(CORES) as worker_pool:
         result = worker_pool.map(run_per_frame, indices)
     result = np.asarray(result).T
     return pd.DataFrame.from_dict({"t": indices, "com": result})
@@ -416,6 +416,42 @@ def save_com_dist(
     dist = measure_com_dist(top_path, selectA, selectB, indices)
     multiindex_hdf(dist, ids, hdf_path, "com", "t")
 
+
+def dist_per_frame(idx, u, selections):
+    u.trajectory[idx]
+    # Split the trajectores to just portal & ligand atoms
+    atomgroupA = u.select_atoms(selections[0])
+    atomgroupB = u.select_atoms(selections[1])
+    assert atomgroupA.n_atoms == 1, "AtomGroup A selection evaluates with more than 1 atom."
+    assert atomgroupB.n_atoms == 1, "AtomGroup B selection evaluates with more than 1 atom."
+    dist = mda.analysis.distances.dist(atomgroupA, atomgroupB)[0]
+    return dist
+
+
+def measure_dist(
+    top_path: str, trj_path: str, selectA: str, selectB: str, indices=None
+):
+    u = _init_universe([top_path, trj_path])
+    indices = np.arange(u.trajectory.n_frames) if indices is None else indices
+    run_per_frame = partial(dist_per_frame, u=u, selections=[selectA, selectB])
+    with Pool(CORES) as worker_pool:
+        result = worker_pool.map(run_per_frame, indices)
+    result = np.asarray(result).T
+    return pd.DataFrame.from_dict({"t": indices, "dist": result})
+
+
+def save_dist(
+    ids: list,
+    top_path: str,
+    trj_path: str,
+    hdf_path: str,
+    selectA: str,
+    selectB: str,
+    indices=None,
+):
+    log.info(f"Running COM Dist. Calc. for {' '.join(ids)}")
+    dist = measure_com_dist(top_path, selectA, selectB, indices)
+    multiindex_hdf(dist, ids, hdf_path, "dist", "t")
 
 def atom_numbers(pdb, select, names=None):
     """

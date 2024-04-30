@@ -195,7 +195,8 @@ def transfer(local_dir, remote_dir):
     print(path)
     try:
         subprocess.run(
-            ["rsync" "-avzhPu", f"{local_dir}/restraints_k*", f"{remote_dir}/{path}/"], check=True
+            ["rsync" "-avzhPu", f"{local_dir}/restraints_k*", f"{remote_dir}/{path}/"],
+            check=True,
         )
     except subprocess.CalledProcessError as error:
         print(
@@ -206,9 +207,16 @@ def transfer(local_dir, remote_dir):
 def autoimage_file(top_file, crd_file):
     """Convert a system from Amber --> PDB using PyTraj"""
     # Check that the topology has a readable extension
-    assert top_file.split(".")[-1] in ["parm7", "prmtop"], "Topology File must be of type: parm7 or prmtop"
+    assert top_file.split(".")[-1] in [
+        "parm7",
+        "prmtop",
+    ], "Topology File must be of type: parm7 or prmtop"
     # Check that the coordinate file has a readable extension
-    assert crd_file.split(".")[-1] in ["rst7", "ncrst", "restrt"], "Coordinate File must be of type: rst7, ncrst, restrt"
+    assert crd_file.split(".")[-1] in [
+        "rst7",
+        "ncrst",
+        "restrt",
+    ], "Coordinate File must be of type: rst7, ncrst, restrt"
 
     # Load the amber structure into PyTraj
     to_convert = pt.load(crd_file, top_file)
