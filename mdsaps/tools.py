@@ -524,6 +524,9 @@ def usym(string: str) -> str:
     # Greek letter gamma (lower case)
     elif any(x in string for x in ["gamma", "ga", "y"]):
         u_char = "\u03b3"
+    # Greek letter mu (lower case)
+    elif any(x in string for x in ["mu"]):
+        u_char = "\u03bc"
     else:
         raise ValueError("Please input a valid symbol reference.")
     return u_char
