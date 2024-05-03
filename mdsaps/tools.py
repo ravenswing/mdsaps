@@ -20,7 +20,7 @@ import subprocess
 from multiprocessing import Pool
 from functools import partial
 from numbers import Number
-from MDAnalysis.analysis import rms
+from MDAnalysis.analysis import rms, distances
 from pathlib import Path
 from os.path import exists
 
@@ -424,7 +424,7 @@ def dist_per_frame(idx, u, selections):
     atomgroupB = u.select_atoms(selections[1])
     assert atomgroupA.n_atoms == 1, "AtomGroup A selection evaluates with more than 1 atom."
     assert atomgroupB.n_atoms == 1, "AtomGroup B selection evaluates with more than 1 atom."
-    dist = mda.analysis.distances.dist(atomgroupA, atomgroupB)[0]
+    dist = distances.dist(atomgroupA, atomgroupB)[-1][0]
     return dist
 
 
@@ -449,8 +449,8 @@ def save_dist(
     selectB: str,
     indices=None,
 ):
-    log.info(f"Running COM Dist. Calc. for {' '.join(ids)}")
-    dist = measure_com_dist(top_path, selectA, selectB, indices)
+    log.info(f"Running Dist. Calc. for {' '.join(ids)}")
+    dist = measure_dist(top_path, trj_path, selectA, selectB, indices)
     multiindex_hdf(dist, ids, hdf_path, "dist", "t")
 
 def atom_numbers(pdb, select, names=None):
