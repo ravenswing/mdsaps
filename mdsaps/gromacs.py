@@ -7,6 +7,7 @@
 """
 
 import logging
+from time import sleep
 import pandas as pd
 import subprocess
 from pathlib import Path
@@ -87,6 +88,28 @@ def sumhills_convergence(
             f"{'_'.join(str(fes.stem).split('_')[:-1])}_{(fes_number + 1) * every}"
         )
         fes.replace(new_path)
+
+
+def run_trjconv(options: list[str], echo: list[str] = None):
+    
+    out_file = ["#!/bin/bash", "touch COMPLETED"]
+
+    if echo:
+        command = f"echo {" ".join(echo)} | {GMX} trjconv {" ".join(options)}"
+    else:
+        command = f"{GMX} trjconv {" ".join(options)}"
+
+    out_file.insert(1, command)
+    with open('/tmp/trjconv_in.sh', 'w') as f:
+
+    while not Path("/tmp/COMPLETED").exists():
+        sleep(5)
+
+    # remove the file
+
+
+    # return "exitcode"
+    return True
 
 
 def cut_traj(
