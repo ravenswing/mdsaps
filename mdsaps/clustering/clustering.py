@@ -186,3 +186,32 @@ def kmeans_scan(
         )
         # ...plot the sizes of the clusters.
         plot_sizes(cluster_collection, f"{dir}/Cluster_Sizes_n={n}.png")
+
+
+def single_centroid(
+    traj_path: str,
+    top_path: str,
+    out_path: str,
+    cluster_selection: str = "backbone",
+) -> None:
+    top_path = (
+        str(Path(traj_path).parent / Path(top_path))
+        if "/" not in top_path
+        else top_path
+    )
+    out_path = (
+        Path(traj_path).parent / Path(out_path)
+        if "/" not in out_path
+        else Path(out_path)
+    )
+    # Create MDA universe from trajectory.
+    u = tools._init_universe([top_path, traj_path])
+    # ...perform the kmeans clustering to make ClusterCollection.
+    cluster_collection = kmeans(u, 1, cluster_selection)
+    # running the clustering affects the universe e.g. removes original time information
+    # re-initialise to preserve and save
+    u = tools._init_universe([top_path, traj_path])
+    # ...save the centroids as pdbs.
+    save_centroids(
+        cluster_collection, u, out_path.parent, out_name=out_path.stem, _warn=False
+    )

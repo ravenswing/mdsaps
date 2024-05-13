@@ -413,7 +413,7 @@ def save_com_dist(
     indices=None,
 ):
     log.info(f"Running COM Dist. Calc. for {' '.join(ids)}")
-    dist = measure_com_dist(top_path, selectA, selectB, indices)
+    dist = measure_com_dist(top_path, trj_path, selectA, selectB, indices)
     multiindex_hdf(dist, ids, hdf_path, "com", "t")
 
 

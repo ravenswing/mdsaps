@@ -90,27 +90,32 @@ def sumhills_convergence(
         fes.replace(new_path)
 
 
+"""
 def run_trjconv(options: list[str], echo: list[str] = None):
     
-    out_file = ["#!/bin/bash", "touch COMPLETED"]
+    out_file = ["#!/bin/bash", "touch ./COMPLETED"]
 
     if echo:
-        command = f"echo {" ".join(echo)} | {GMX} trjconv {" ".join(options)}"
+        command = f"echo {' '.join(echo)} | {GMX} trjconv {' '.join(options)}"
     else:
-        command = f"{GMX} trjconv {" ".join(options)}"
+        command = f"{GMX} trjconv {' '.join(options)}"
 
     out_file.insert(1, command)
     with open('/tmp/trjconv_in.sh', 'w') as f:
+        f.writelines(out_file)
 
-    while not Path("/tmp/COMPLETED").exists():
+    subprocess.run('bash /tmp/trjconv_in.sh', shell=True)
+    
+    signal_path = Path("/tmp/COMPLETED")
+    while not signal_path.exists():
         sleep(5)
 
     # remove the file
-
+    signal_path.unlink()
 
     # return "exitcode"
-    return True
-
+    return signal_path.exists():
+"""
 
 def cut_traj(
     trj_path: str,
