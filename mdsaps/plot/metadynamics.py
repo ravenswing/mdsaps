@@ -19,12 +19,14 @@ sizes = config.sizes
 def fes2D(
     fes_path,
     save_path,
+    cvs,
     units="A",
     basins=None,
     funnel=None,
     basin_lables=None,
     xlims=None,
     ylims=None,
+    contour_width=2,
     labels=["CV1", "CV2"],
 ):
     """
@@ -34,21 +36,25 @@ def fes2D(
                     'b': 1.0,
                     'f': 0.15,
                     'h': 1.5}
-    """
     data, lab = load.fes(fes_path, False)
     data[2] = data[2] / 4.184
     if units == "A":
         data[0] = np.multiply(data[0], 10)
         data[1] = np.multiply(data[1], 10)
-    cmax = np.amax(data[2][np.isfinite(data[2])]) + 1
+    """
+    
+    df = pd.read_table(fes_path, comment="#", sep="\s+", names=[cvs[0], cvs[1], "free", "err1", 'err2'])
+    
+    z_finite = np.isfinite(df.free)
+    cmax = np.amax(z_finite) + 1
 
     fig = go.Figure(
         data=go.Contour(
-            z=data[2],
-            x=data[0],  # horizontal axis
-            y=data[1],  # vertical axis
+            z=df.free.divide(4.184),
+            x=df[cvs[0]].multiply(10),  # horizontal axis
+            y=df[cvs[1]].multiply(10),  # horizontal axis
             colorscale=colours.map,
-            contours=dict(start=0, end=cmax, size=2),
+            #contours=dict(start=0, end=cmax, size=contour_width),
             colorbar=dict(title="Free Energy (kcal/mol)", titleside="right"),
         )
     )

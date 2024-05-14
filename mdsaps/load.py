@@ -74,7 +74,7 @@ def fes(filename: str, mode: str = "pandas", is_rew: bool = False):
             [x_name, y_name] = ["RMSD to IN", "RMSD to OUT"]
         else:
             nbins = int(
-                [line.split()[-1] for line in lines if "nbins_pp.proj" in line][0]
+                [line.split()[-1] for line in lines if "nbins_" in line][0]
             )
             [x_name, y_name] = lines[0].split()[2:4]
         # Organise data into plotable arrays
