@@ -19,15 +19,16 @@ sizes = config.sizes
 def fes2D(
     fes_path,
     save_path,
-    cvs,
     units="A",
-    basins=None,
-    funnel=None,
-    basin_lables=None,
+    title: str = "2D Free Energy Surface",
+    labels=None,
     xlims=None,
     ylims=None,
-    contour_width=2,
-    labels=["CV1", "CV2"],
+    dticks=(None, None),
+    funnel=None,
+    basins=None,
+    basin_lables=None,
+    contour_width=None,
 ):
     """
     funnel_parms = {'lw': 0.0,
@@ -42,19 +43,26 @@ def fes2D(
         data[0] = np.multiply(data[0], 10)
         data[1] = np.multiply(data[1], 10)
     """
-    
-    df = pd.read_table(fes_path, comment="#", sep="\s+", names=[cvs[0], cvs[1], "free", "err1", 'err2'])
-    
-    z_finite = np.isfinite(df.free)
-    cmax = np.amax(z_finite) + 1
 
+    fes, cvs = load.fes(fes_path)
+
+    labels = labels if labels else cvs
+    if contour_width:
+        # default value for fun-metaD etc. = 2 
+        z_finite = np.isfinite(fes.free)
+        cmax = np.amax(z_finite) + 1
+        contours = dict(start=0, end=cmax, size=contour_width),
+    else:
+       contours = None 
+    
+    # TODO - Add units multiply!!!
     fig = go.Figure(
         data=go.Contour(
-            z=df.free.divide(4.184),
-            x=df[cvs[0]].multiply(10),  # horizontal axis
-            y=df[cvs[1]].multiply(10),  # horizontal axis
+            z=fes.free.divide(4.184),
+            x=fes[cvs[0]].multiply(10),  # horizontal axis
+            y=fes[cvs[1]].multiply(10),  # horizontal axis
             colorscale=colours.map,
-            #contours=dict(start=0, end=cmax, size=contour_width),
+            contours=contours,
             colorbar=dict(title="Free Energy (kcal/mol)", titleside="right"),
         )
     )
@@ -77,18 +85,22 @@ def fes2D(
         ticks="outside",
         minor_ticks="outside",
     )
-    if units == "A":
+ 
+    x_tickstep, y_tickstep = dticks
+    if x_tickstep:
+        fig.update_xaxes(dtick=x_tickstep)
+    else:
         fig.update_xaxes(dtick=5.0)
+    if y_tickstep:
+        fig.update_yaxes(dtick=y_tickstep)
+    else:
         fig.update_yaxes(dtick=2.0)
-    if units == "nm":
-        fig.update_xaxes(dtick=0.5)
-        fig.update_yaxes(dtick=0.2)
-
+        
     # format the rest of the figure
     fig.update_layout(
         height=1600,
         width=2200,
-        title_text="",
+        title_text=title,
         font=dict(color=colours.labels, family="Arial", size=32),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -128,29 +140,30 @@ def fes2D(
 
 def fes1D(
     fes_path: str,
-    cv: str,
     save_path: str,
-    cv_label: str = "CV1",
+    label=None,
     title: str = "1D Free Energy Surface",
     xlims=None,
     ylims=None,
     walls=None,
     vlines=None,
 ):
-    df = pd.read_table(fes_path, comment="#", sep="\s+", names=[cv, "free", "err"])
-    # colvar = load.colvar(f"{wd}/COLVAR")
+    # df = pd.read_table(fes_path, comment="#", sep="\s+", names=[cv, "free", "err"])
+    fes, cvs = load.fes(fes_path)
+    assert len(cvs) == 1, "ERROR: More than 1 CV in FES. Please provide a 1D FES."
+    cv = cvs[0]
+    label = label if label else cv
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
-    ax.plot(df[cv].multiply(10), df.free.divide(4.184), c=colours.default, label="FES")
-    # ax.axvline(colvar[cv].iloc[0]*10, ls='dotted', label='Initial', c='xkcd:light gray')
+    ax.plot(fes[cv].multiply(10), fes.free.divide(4.184), c=colours.default, label="FES")
     if xlims:
         ax.set_xlim(xlims)
     if ylims:
         ax.set_ylim(ylims)
         ymax = ylims[1]
     else:
-        ymax = df.free.divide(4.184).max() + 2
+        ymax = fes.free.divide(4.184).max() + 2
 
     if walls:
         for i, wall in enumerate(walls):
@@ -165,8 +178,8 @@ def fes1D(
             )
 
     if vlines:
-        for label, position in vlines.items():
-            ax.axvline(position, ls="dotted", label=label, c=colours.ax)
+        for legend_label, position in vlines.items():
+            ax.axvline(position, ls="dotted", label=legend_label, c=colours.ax)
 
     if any([walls, vlines]):
         ax.legend(labelcolor=colours.labels)
@@ -175,7 +188,7 @@ def fes1D(
     for spine in ax.spines.values():
         spine.set_edgecolor(colours.ax)
 
-    ax.set_xlabel(cv_label, c=colours.labels)
+    ax.set_xlabel(label, c=colours.labels)
     ax.set_ylabel("Free Energy (kcal/mol)", c=colours.labels)
     ax.set_title(title, c=colours.labels)
     fig.savefig(

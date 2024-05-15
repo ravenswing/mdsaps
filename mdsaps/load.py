@@ -44,20 +44,25 @@ def colvar(filename: str, output: str = "as_pandas"):
         return old_col.values.astype(float)
 
 
-def fes(filename: str, mode: str = "pandas", is_rew: bool = False):
-    if mode == "pandas":
-        with open(filename) as f:
-            head = f.readlines()[0]
-        head = head.split()[2:]
+def fes(filename: str, np_output: bool = False, _is_rew: bool = False):
+    with open(filename) as f:
+        fields = f.readlines()[0]
+    fields = fields.split()[2:]
+
+    fields = [f.replace("projection", "free") for f in fields]
+    fields = [f.replace("file.free", "free") for f in fields]
+    cvs = fields[: fields.index("free")]
+
+    if not np_output:
         fes = pd.concat(
             [
                 df
                 for df in pd.read_csv(
-                    filename, sep="\s+", names=head, comment="#", chunksize=1000
+                    filename, sep="\s+", names=fields, comment="#", chunksize=1000
                 )
             ]
         )
-        return fes
+
     else:
         fes = [[], [], []]
         with open(filename) as f:
@@ -69,13 +74,11 @@ def fes(filename: str, mode: str = "pandas", is_rew: bool = False):
         for index in sorted(breaks, reverse=True):
             del data[index]
         # Get the number of bins and CV names from header
-        if is_rew:
+        if _is_rew:
             nbins = int(breaks[0])
             [x_name, y_name] = ["RMSD to IN", "RMSD to OUT"]
         else:
-            nbins = int(
-                [line.split()[-1] for line in lines if "nbins_" in line][0]
-            )
+            nbins = int([line.split()[-1] for line in lines if "nbins_" in line][0])
             [x_name, y_name] = lines[0].split()[2:4]
         # Organise data into plotable arrays
         split_data = [data[i : i + nbins] for i in range(0, len(data), nbins)]
@@ -85,7 +88,8 @@ def fes(filename: str, mode: str = "pandas", is_rew: bool = False):
             fes[1].append(block[0][1])
         fes[0] = [line[0] for line in split_data[0]]
         fes[2] = np.asarray(z)
-        return fes, [x_name, y_name]
+
+    return fes, cvs
 
 
 def xvg(filename: str) -> list:
