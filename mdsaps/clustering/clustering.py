@@ -9,20 +9,22 @@ from .. import tools, plot, load
 from ..config import CORES
 
 
-def get_indices(colvar_path: str, cv_bounds, colvar_stride: int = None):
+def get_indices(colvar_path: str, cv_bounds, colvar_stride: int = None, return_info: bool = False):
     colvar = load.colvar(colvar_path)
+    info = {"Initial Colvar Frames": len(colvar.index)}
     if colvar_stride:
         colvar = colvar.iloc[::colvar_stride, :].reset_index(drop=True)
-    print(f"Colvar Frames: {len(colvar.index)}")
-
+    info["Colvar Frames w. Stride"] = len(colvar.index)
+    
     # while colvar.time.iloc[1] != initial.trajectory[1].time:
     # colvar = colvar.drop(1).reset_index(drop=True)
 
     for cv, bounds in cv_bounds.items():
         colvar = colvar.loc[colvar[cv].between(bounds[0], bounds[1])]
     indices = colvar.index.values
-
-    return indices
+    info["Percentage"] = (len(indices) / info["Colvar Frames w. Stride"]) * 100
+    
+    return indices if not return_info else indices, info
 
 
 def selective_traj(traj_path: str, top_path: str, out_path: str, indices) -> None:
