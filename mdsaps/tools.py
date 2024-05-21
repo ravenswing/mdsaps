@@ -169,6 +169,7 @@ def slice_traj(
     select: str = None,
     indices=None,
     pdb_path: str = None,
+    _check_frames: bool = False,
 ) -> None:
     top_path = (
         str(Path(traj_path).parent / Path(top_path))
@@ -181,6 +182,9 @@ def slice_traj(
         else out_path
     )
     initial = _init_universe([top_path, traj_path])
+
+    if _check_frames:
+        print(f"Trajectory Frames: {initial.trajectory.n_frames}")
 
     if select:
         out_group = initial.select_atoms(select)
@@ -205,6 +209,28 @@ def slice_traj(
             for idx in indices:
                 initial.trajectory[idx]
                 W.write(out_group)
+
+
+def align_traj(
+    traj_path: str, top_path: str, ref: str, out_path: str, selection: str = "backbone"
+):
+    top_path = (
+        str(Path(traj_path).parent / Path(top_path))
+        if "/" not in top_path
+        else top_path
+    )
+    ref = str(Path(traj_path).parent / Path(ref)) if "/" not in ref else ref
+    out_path = (
+        str(Path(traj_path).parent / Path(out_path))
+        if "/" not in out_path
+        else out_path
+    )
+
+    mobile = tools._init_universe([top_path, traj_path])
+    reference = tools._init_universe(ref)
+
+    aligner = align.AlignTraj(mobile, reference, select=selection, filename=out_path)
+    aligner.run()
 
 
 def multiindex_hdf(new_data, ids, hdf_path, data_col, index_col):
@@ -422,8 +448,12 @@ def dist_per_frame(idx, u, selections):
     # Split the trajectores to just portal & ligand atoms
     atomgroupA = u.select_atoms(selections[0])
     atomgroupB = u.select_atoms(selections[1])
-    assert atomgroupA.n_atoms == 1, "AtomGroup A selection evaluates with more than 1 atom."
-    assert atomgroupB.n_atoms == 1, "AtomGroup B selection evaluates with more than 1 atom."
+    assert (
+        atomgroupA.n_atoms == 1
+    ), "AtomGroup A selection evaluates with more than 1 atom."
+    assert (
+        atomgroupB.n_atoms == 1
+    ), "AtomGroup B selection evaluates with more than 1 atom."
     dist = distances.dist(atomgroupA, atomgroupB)[-1][0]
     return dist
 
@@ -452,6 +482,7 @@ def save_dist(
     log.info(f"Running Dist. Calc. for {' '.join(ids)}")
     dist = measure_dist(top_path, trj_path, selectA, selectB, indices)
     multiindex_hdf(dist, ids, hdf_path, "dist", "t")
+
 
 def atom_numbers(pdb, select, names=None):
     """

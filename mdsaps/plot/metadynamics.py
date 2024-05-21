@@ -48,13 +48,13 @@ def fes2D(
 
     labels = labels if labels else cvs
     if contour_width:
-        # default value for fun-metaD etc. = 2 
+        # default value for fun-metaD etc. = 2
         z_finite = np.isfinite(fes.free)
         cmax = np.amax(z_finite) + 1
-        contours = dict(start=0, end=cmax, size=contour_width),
+        contours = (dict(start=0, end=cmax, size=contour_width),)
     else:
-       contours = None 
-    
+        contours = None
+
     # TODO - Add units multiply!!!
     fig = go.Figure(
         data=go.Contour(
@@ -85,7 +85,7 @@ def fes2D(
         ticks="outside",
         minor_ticks="outside",
     )
- 
+
     x_tickstep, y_tickstep = dticks
     if x_tickstep:
         fig.update_xaxes(dtick=x_tickstep)
@@ -95,7 +95,7 @@ def fes2D(
         fig.update_yaxes(dtick=y_tickstep)
     else:
         fig.update_yaxes(dtick=2.0)
-        
+
     # format the rest of the figure
     fig.update_layout(
         height=1600,
@@ -156,7 +156,9 @@ def fes1D(
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
-    ax.plot(fes[cv].multiply(10), fes.free.divide(4.184), c=colours.default, label="FES")
+    ax.plot(
+        fes[cv].multiply(10), fes.free.divide(4.184), c=colours.default, label="FES"
+    )
     if xlims:
         ax.set_xlim(xlims)
     if ylims:
@@ -167,14 +169,14 @@ def fes1D(
 
     if walls:
         for i, wall in enumerate(walls):
-            label = "Walls" if i == 0 else None
+            wall_label = "Walls" if i == 0 else None
             ax.fill_between(
                 np.linspace(wall[0], wall[1]),
                 -2,
                 ymax,
                 color="k",
                 alpha=0.05,
-                label=label,
+                label=wall_label,
             )
 
     if vlines:
