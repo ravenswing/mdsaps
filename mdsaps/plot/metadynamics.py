@@ -29,6 +29,7 @@ def fes2D(
     basins=None,
     basin_lables=None,
     contour_width=None,
+    contour_max=None,
 ):
     """
     funnel_parms = {'lw': 0.0,
@@ -47,11 +48,14 @@ def fes2D(
     fes, cvs = load.fes(fes_path)
 
     labels = labels if labels else cvs
+    # default value for fun-metaD etc. = 2
     if contour_width:
-        # default value for fun-metaD etc. = 2
-        z_finite = np.isfinite(fes.free)
-        cmax = np.amax(z_finite) + 1
-        contours = (dict(start=0, end=cmax, size=contour_width),)
+        if contour_max:
+            cmax = contour_max
+        else:
+            z_finite = np.isfinite(fes.free)
+            cmax = np.amax(fes.free[z_finite].divide(4.184)) + 1
+        contours = dict(start=0, end=cmax, size=contour_width)
     else:
         contours = None
 

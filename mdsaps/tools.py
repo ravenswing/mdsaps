@@ -561,3 +561,14 @@ def usym(string: str) -> str:
     else:
         raise ValueError("Please input a valid symbol reference.")
     return u_char
+
+
+def greekify(string: str) -> str:
+    # Standard lettering
+    in_str = "aby"
+    # Unicode characters using usym
+    out_str = f"{usym('alpha')}{usym('beta')}{usym('gamma')}"
+    # Make translation table for standard -> greek
+    ttable = str.maketrans(in_str, out_str)
+    # Return translated string
+    return string.translate(ttable)
