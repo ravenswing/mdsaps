@@ -352,7 +352,7 @@ for row in colvar:
     bias = sum([row[j] for j in col_bias])
     # FIX !!!
     # THIS IS JANK!
-    #if bias > 1700:
+    # if bias > 1700:
     #   print(bias / kT, ebetac[indx])
     #  print(sorted([row[j] for j in col_bias]))
     # bias = 1700

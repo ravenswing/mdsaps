@@ -19,7 +19,9 @@ log = logging.getLogger(__name__)
 log.info("G.O.A.T. (Gromacs Organisation n' Analysis Tools) Loaded")
 
 
-def run_sumhills(wd, out_name, name="HILLS", stride=None, cv=None):
+def run_sumhills(
+    wd, out_name, new_dir: str = "fes", name: str = "HILLS", stride=None, cv=None
+):
     """Outputs:
     - FES
     - FES over time (with stride)
@@ -32,9 +34,9 @@ def run_sumhills(wd, out_name, name="HILLS", stride=None, cv=None):
     if stride is not None:
         # TODO -> Make dirs
         # Make a new directory to hold output
-        subprocess.run(f"mkdir -p {wd}/fes", shell=True, check=True)
+        subprocess.run(f"mkdir -p {wd}/{new_dir}", shell=True, check=True)
         # Adjust output name for new directory
-        out_name = f"fes/{out_name}"
+        out_name = f"{new_dir}/{out_name}"
         # Add flag for plumed command
         st_flags = ["--stride", f"{stride}"]
     else:
@@ -69,23 +71,69 @@ def run_sumhills(wd, out_name, name="HILLS", stride=None, cv=None):
         )
 
 
+def run_reweight(
+    wd,
+    cv,
+    colvar_path="COLVAR",
+    out_name="FES_REW",
+):
+    SCRIPT = "/home/rhys/mdsaps/mdsaps/lib/auxiliary_scripts/reweight.py"
+
+    fes_prefix = f"tmp_fes_{cv}-"
+    colvar_file = f"{wd}/NEW_COLVAR"
+
+    colvar = load.colvar(f"{wd}/{colvar_path}")
+    bias_column = colvar.columns.get_loc("meta.bias") + 1
+
+    n_fes = len(glob(f"{wd}/fes/{fes_prefix}*.dat"))
+    column = colvar.columns.get_loc(cv) + 1
+    print(f"Using COLVAR column {column} for cv: {cv}")
+    fes_column = 2  # For 1D... would change for 2D.
+
+    command = [
+        "python",
+        SCRIPT,  # path to python script
+        "-bsf 10.0",  # BIASFACTOR used in simulation
+        f"-fpref {wd}/fes/{fes_prefix}",  # prefix for FESs
+        f"-nf {n_fes}",  # number of FESs
+        f"-fcol {fes_column}",  # column of free energy in FES
+        f"-colvar {colvar_file}",  # (default value)
+        f"-biascol {bias_column}",  # column in COLVAR containing energy bias
+        f"-rewcol {column}",  # column(s) to reweight over
+        f"-outfile {out_name}",
+    ]
+    command = " ".join(command)
+
+    try:
+        subprocess.run(command, shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print(
+            "Error code:", error.returncode, ". Output:", error.output.decode("utf-8")
+        )
+
+
 def sumhills_convergence(
     wd, out_name, every=50, name="HILLS", cv=None, new_dir="convergence", overwrite=True
 ):
-    run_sumhills(wd, out_name=f"{out_name}_", stride=every / 0.002, name=name, cv=cv)
-
-    old_dir_path = f"{wd}/fes"
     new_dir_path = f"{wd}/{new_dir}"
+
     if overwrite and Path(new_dir_path).exists():
         print("removing")
         subprocess.run(f"rm {new_dir_path}/*.dat", shell=True)
 
-    Path(old_dir_path).replace(Path(new_dir_path))
+    run_sumhills(
+        wd,
+        out_name=f"{out_name}_",
+        new_dir=new_dir,
+        stride=every / 0.002,
+        name=name,
+        cv=cv,
+    )
 
     for fes in Path(new_dir_path).glob("*.dat"):
         fes_number = int(str(fes.stem).split("_")[-1])
         new_path = fes.with_stem(
-            f"{'_'.join(str(fes.stem).split('_')[:-1])}_{(fes_number + 1) * every}"
+            f"{'_'.join(str(fes.stem).split('_')[:-1])}_{(fes_number) * every}"
         )
         fes.replace(new_path)
 

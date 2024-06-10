@@ -370,7 +370,7 @@ def convergence(
             label=f"{t} ns",
         )
 
-    #rew = pd.read_table(rew_path, comment="#", sep="\s+", names=[cv, "free", "err"])
+    # rew = pd.read_table(rew_path, comment="#", sep="\s+", names=[cv, "free", "err"])
     rew = pd.read_table(rew_path, comment="#", sep="\s+", names=[cv, "free"])
     ax.plot(
         rew[cv].multiply(10), rew.free.divide(4.184), c="k", ls="--", label=rew_label
