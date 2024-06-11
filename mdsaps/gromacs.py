@@ -11,6 +11,7 @@ from time import sleep
 import pandas as pd
 import subprocess
 from pathlib import Path
+from glob import glob
 
 from . import load
 from .config import GMX
@@ -73,43 +74,51 @@ def run_sumhills(
 
 def run_reweight(
     wd,
-    cv,
-    colvar_path="COLVAR",
+    cv=None,
+    fes_prefix="FES",
+    colvar_name="COLVAR",
     out_name="FES_REW",
+    bias_factor=10.0,
 ):
+    # TODO Add cv = None & 2 CVs in FES -> do 2D reweight
+
     SCRIPT = "/home/rhys/mdsaps/mdsaps/lib/auxiliary_scripts/reweight.py"
 
-    fes_prefix = f"tmp_fes_{cv}-"
-    colvar_file = f"{wd}/NEW_COLVAR"
-
-    colvar = load.colvar(f"{wd}/{colvar_path}")
-    bias_column = colvar.columns.get_loc("meta.bias") + 1
-
-    n_fes = len(glob(f"{wd}/fes/{fes_prefix}*.dat"))
+    colvar_path = f"{wd}/{colvar_name}"
+    colvar = load.colvar(colvar_path)
     column = colvar.columns.get_loc(cv) + 1
-    print(f"Using COLVAR column {column} for cv: {cv}")
-    fes_column = 2  # For 1D... would change for 2D.
+    bias_column = colvar.columns.get_loc("meta.bias") + 1
+    log.info(f"Reweighting FES - Using COLVAR column {column} for cv: {cv}")
+    n_fes = len(glob(f"{wd}/fes/{fes_prefix}*.dat"))
 
-    command = [
-        "python",
-        SCRIPT,  # path to python script
-        "-bsf 10.0",  # BIASFACTOR used in simulation
-        f"-fpref {wd}/fes/{fes_prefix}",  # prefix for FESs
-        f"-nf {n_fes}",  # number of FESs
-        f"-fcol {fes_column}",  # column of free energy in FES
-        f"-colvar {colvar_file}",  # (default value)
-        f"-biascol {bias_column}",  # column in COLVAR containing energy bias
-        f"-rewcol {column}",  # column(s) to reweight over
-        f"-outfile {out_name}",
-    ]
-    command = " ".join(command)
+    if cv is not None:
+        fes_column = 2  # For 1D... would change for 2D.
 
-    try:
-        subprocess.run(command, shell=True, check=True)
-    except subprocess.CalledProcessError as error:
-        print(
-            "Error code:", error.returncode, ". Output:", error.output.decode("utf-8")
-        )
+        command = [
+            "python",
+            SCRIPT,  # path to python script
+            f"-bsf {bias_factor}",  # BIASFACTOR used in simulation
+            f"-fpref {wd}/fes/{fes_prefix}",  # prefix for FESs
+            f"-nf {n_fes}",  # number of FESs
+            f"-fcol {fes_column}",  # column of free energy in FES
+            f"-colvar {colvar_path}",  # (default value)
+            f"-biascol {bias_column}",  # column in COLVAR containing energy bias
+            f"-rewcol {column}",  # column(s) to reweight over
+            f"-outfile {out_name}",
+        ]
+        command = " ".join(command)
+
+        try:
+            subprocess.run(command, shell=True, check=True)
+        except subprocess.CalledProcessError as error:
+            print(
+                "Error code:",
+                error.returncode,
+                ". Output:",
+                error.output.decode("utf-8"),
+            )
+    else:
+        print("ERROR: Running in 2D is not yet supported")
 
 
 def sumhills_convergence(

@@ -20,7 +20,7 @@ import subprocess
 from multiprocessing import Pool
 from functools import partial
 from numbers import Number
-from MDAnalysis.analysis import rms, distances
+from MDAnalysis.analysis import rms, distances, align
 from pathlib import Path
 from os.path import exists
 
@@ -226,8 +226,8 @@ def align_traj(
         else out_path
     )
 
-    mobile = tools._init_universe([top_path, traj_path])
-    reference = tools._init_universe(ref)
+    mobile = _init_universe([top_path, traj_path])
+    reference = _init_universe(ref)
 
     aligner = align.AlignTraj(mobile, reference, select=selection, filename=out_path)
     aligner.run()
