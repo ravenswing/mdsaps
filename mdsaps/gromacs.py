@@ -74,7 +74,7 @@ def run_sumhills(
 
 def run_reweight(
     wd,
-    cv=None,
+    cvs,
     fes_prefix="FES",
     colvar_name="COLVAR",
     out_name="FES_REW",
@@ -86,39 +86,46 @@ def run_reweight(
 
     colvar_path = f"{wd}/{colvar_name}"
     colvar = load.colvar(colvar_path)
-    column = colvar.columns.get_loc(cv) + 1
     bias_column = colvar.columns.get_loc("meta.bias") + 1
-    log.info(f"Reweighting FES - Using COLVAR column {column} for cv: {cv}")
     n_fes = len(glob(f"{wd}/fes/{fes_prefix}*.dat"))
+    if isinstance(cvs, str):
+        column = colvar.columns.get_loc(cvs) + 1
+        fes_column = 2
+    elif isinstance(cvs, list) and len(cvs) == 1:
+        column = colvar.columns.get_loc(cvs[0]) + 1
+        fes_column = 2
+    elif isinstance(cvs, list) and len(cvs) == 2:
+        column = ' '.join([str(colvar.columns.get_loc(cv) + 1) for cv in cvs])
+        fes_column = 3
 
-    if cv is not None:
-        fes_column = 2  # For 1D... would change for 2D.
-
-        command = [
-            "python",
-            SCRIPT,  # path to python script
-            f"-bsf {bias_factor}",  # BIASFACTOR used in simulation
-            f"-fpref {wd}/fes/{fes_prefix}",  # prefix for FESs
-            f"-nf {n_fes}",  # number of FESs
-            f"-fcol {fes_column}",  # column of free energy in FES
-            f"-colvar {colvar_path}",  # (default value)
-            f"-biascol {bias_column}",  # column in COLVAR containing energy bias
-            f"-rewcol {column}",  # column(s) to reweight over
-            f"-outfile {out_name}",
-        ]
-        command = " ".join(command)
-
-        try:
-            subprocess.run(command, shell=True, check=True)
-        except subprocess.CalledProcessError as error:
-            print(
-                "Error code:",
-                error.returncode,
-                ". Output:",
-                error.output.decode("utf-8"),
-            )
     else:
-        print("ERROR: Running in 2D is not yet supported")
+        print("ERROR: Please input CVs for 1D or 2D FES.")
+
+    log.info(f"Reweighting FES - Using COLVAR column(s) {column} for cvs: {' '.join(cvs)}")
+
+    command = [
+        "python",
+        SCRIPT,  # path to python script
+        f"-bsf {bias_factor}",  # BIASFACTOR used in simulation
+        f"-fpref {wd}/fes/{fes_prefix}",  # prefix for FESs
+        f"-nf {n_fes}",  # number of FESs
+        f"-fcol {fes_column}",  # column of free energy in FES
+        f"-colvar {colvar_path}",  # (default value)
+        f"-biascol {bias_column}",  # column in COLVAR containing energy bias
+        f"-rewcol {column}",  # column(s) to reweight over
+        f"-outfile {out_name}",
+    ]
+    command = " ".join(command)
+
+    try:
+        subprocess.run(command, shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print(
+            "Error code:",
+            error.returncode,
+            ". Output:",
+            error.output.decode("utf-8"),
+        )
 
 
 def sumhills_convergence(
