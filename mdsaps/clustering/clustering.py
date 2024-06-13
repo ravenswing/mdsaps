@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import MDAnalysis as mda
-from MDAnalysis.analysis import encore, align
+from MDAnalysis.analysis import encore
 from MDAnalysis.analysis.encore.clustering import ClusteringMethod as clm
 from pathlib import Path
 

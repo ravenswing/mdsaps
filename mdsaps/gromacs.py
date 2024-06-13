@@ -7,7 +7,6 @@
 """
 
 import logging
-from time import sleep
 import pandas as pd
 import subprocess
 from pathlib import Path
@@ -241,7 +240,7 @@ def gismo_colvar(wd, in_colvar="COLVAR", out_colvar="GISMO.colvar"):
     old_col = old_col.iloc[::5, :]
     # Add every 10th line (and the second line) for GISMO colvar
     gis_col = old_col.iloc[:2, :]
-    gis_col = gis_col.append(old_col.iloc[10::10, :], ignore_index=True)
+    gis_col = pd.concat([gis_col, old_col.iloc[10::10, :]], ignore_index=True)
 
     # Define path for the output GISMO COLVAR file
     gismo_col_path = f"{wd}/{out_colvar}"
