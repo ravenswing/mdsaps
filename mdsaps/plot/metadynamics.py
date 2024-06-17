@@ -205,20 +205,26 @@ def fes1D(
 
 def cvs(
     colvar_path,
-    save_path,
     cvs,
     cv_labels,
+    save_path="cvs.png",
     units="A",
     title="CV Diffusion",
     xlims=None,
     ylims=None,
     mean=False,
     initial=False,
+    ax=None,
 ):
     colvar = load.colvar(colvar_path)
     N = len(cvs)
 
-    fig, ax = plt.subplots(1, N, figsize=(8 * N + 2, 6), layout="constrained")
+    if ax is None:
+        fig, ax = plt.subplots(1, N, figsize=(8 * N + 2, 6), layout="constrained")
+        save = True
+    else:
+        assert(len(ax) == N, "Number of CVs does not match the shape of supplied axis")
+        save = False
 
     if N == 1:
         ax = [ax]
@@ -255,10 +261,13 @@ def cvs(
 
         if any([mean, initial]):
             ax[i].legend(labelcolor=colours.labels, fontsize=sizes.legend)
-    fig.suptitle(title, fontsize=sizes.title, c=colours.labels)
-    fig.savefig(
-        save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
-    )
+    if save:
+        fig.suptitle(title, fontsize=sizes.title, c=colours.labels)
+        fig.savefig(
+            save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
+        )
+    else:
+        return ax
     plt.close()
 
 
@@ -340,7 +349,7 @@ def convergence(
     cv: str,
     times: list,
     rew_path: str,
-    save_path: str,
+    save_path: str = 'conv_plot.png',
     cv_label: str = "CV",
     rew_label: str = "Reweight",
     title: str = "Convergence",
@@ -348,12 +357,17 @@ def convergence(
     ylims=None,
     walls=None,
     vlines=None,
+    ax=None,
 ) -> None:
     """Plot convergence of cv"""
 
     assert len(times) <= 6, "Can only plot 6 FES files."
 
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+        save = True
+    else:
+        save = False
 
     for i, t in enumerate(times):
         df = pd.read_table(
@@ -409,9 +423,13 @@ def convergence(
     ax.set_xlabel(cv_label, c=colours.labels, fontsize=sizes.labels)
     ax.set_ylabel("Free Energy (kcal/mol)", c=colours.labels, fontsize=sizes.labels)
     ax.set_title(title, c=colours.labels, fontsize=sizes.title)
-    fig.savefig(
-        save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
-    )
+
+    if save:
+        fig.savefig(
+            save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
+        )
+    else:
+        return ax
     plt.close()
 
 
