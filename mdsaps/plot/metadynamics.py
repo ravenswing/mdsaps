@@ -223,7 +223,7 @@ def cvs(
         fig, ax = plt.subplots(1, N, figsize=(8 * N + 2, 6), layout="constrained")
         save = True
     else:
-        assert(len(ax) == N, "Number of CVs does not match the shape of supplied axis")
+        assert (len(ax) == N, "Number of CVs does not match the shape of supplied axis")
         save = False
 
     if N == 1:
@@ -264,7 +264,10 @@ def cvs(
     if save:
         fig.suptitle(title, fontsize=sizes.title, c=colours.labels)
         fig.savefig(
-            save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
+            save_path,
+            bbox_inches="tight",
+            dpi=config.dpi,
+            transparent=config.transparency,
         )
     else:
         return ax
@@ -349,7 +352,7 @@ def convergence(
     cv: str,
     times: list,
     rew_path: str,
-    save_path: str = 'conv_plot.png',
+    save_path: str = "conv_plot.png",
     cv_label: str = "CV",
     rew_label: str = "Reweight",
     title: str = "Convergence",
@@ -426,7 +429,10 @@ def convergence(
 
     if save:
         fig.savefig(
-            save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
+            save_path,
+            bbox_inches="tight",
+            dpi=config.dpi,
+            transparent=config.transparency,
         )
     else:
         return ax

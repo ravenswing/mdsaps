@@ -94,13 +94,15 @@ def run_reweight(
         column = colvar.columns.get_loc(cvs[0]) + 1
         fes_column = 2
     elif isinstance(cvs, list) and len(cvs) == 2:
-        column = ' '.join([str(colvar.columns.get_loc(cv) + 1) for cv in cvs])
+        column = " ".join([str(colvar.columns.get_loc(cv) + 1) for cv in cvs])
         fes_column = 3
 
     else:
         print("ERROR: Please input CVs for 1D or 2D FES.")
 
-    log.info(f"Reweighting FES - Using COLVAR column(s) {column} for cvs: {' '.join(cvs)}")
+    log.info(
+        f"Reweighting FES - Using COLVAR column(s) {column} for cvs: {' '.join(cvs)}"
+    )
 
     command = [
         "python",
@@ -355,22 +357,18 @@ def rx(
     data.to_hdf(f"{outpath}.h5", key="df", mode="w")
 
 
-def calculate_delta_g(fes_path, CVs, A, B, vol_corr=0):
-    fes_data = load.fes(fes_path)
-    # Rename CV columns to 1 & 2
-    fes_data.rename(
-        columns={CVs[0]: "cv1", CVs[1]: "cv2", "file.free": "val"}, inplace=True
-    )
+def calculate_delta_g(fes_path, A, B, vol_corr=0, CVs=None):
+    fes_data, cvs = load.fes(fes_path)
     # Convert the CVs to Angstroms:
-    fes_data.cv1 = fes_data.cv1.multiply(10)
-    fes_data.cv2 = fes_data.cv2.multiply(10)
+    fes_data[cvs[0]] = fes_data[cvs[0]].multiply(10)
+    fes_data[cvs[1]] = fes_data[cvs[1]].multiply(10)
     # Isolate the values that correspond to the basins
     basin_A = fes_data[
-        (fes_data.cv1.between(A[0], A[1])) & (fes_data.cv2.between(A[2], A[3]))
-    ].val
+        (fes_data[cvs[0]].between(A[0], A[1])) & (fes_data[cvs[1]].between(A[2], A[3]))
+    ].free
     basin_B = fes_data[
-        (fes_data.cv1.between(B[0], B[1])) & (fes_data.cv2.between(B[2], B[3]))
-    ].val
+        (fes_data[cvs[0]].between(B[0], B[1])) & (fes_data[cvs[1]].between(B[2], B[3]))
+    ].free
     # Calculate the dG from the minimum value in each basin (bound - unbound)
     delta_g = basin_A.min() - basin_B.min()
     # Convert to kcal and apply volume correction for funnel
