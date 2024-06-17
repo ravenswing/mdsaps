@@ -223,7 +223,7 @@ def cvs(
         fig, ax = plt.subplots(1, N, figsize=(8 * N + 2, 6), layout="constrained")
         save = True
     else:
-        assert (len(ax) == N, "Number of CVs does not match the shape of supplied axis")
+        assert len(ax) == N, "Number of CVs does not match the shape of supplied axis"
         save = False
 
     if N == 1:
