@@ -1,0 +1,3 @@
+[lint.per-file-ignores]
+# REMOVE ["F401", "F403"] LATER when improving scripts to fix imports!
+"__init__.py" = ["E402", "F401", "F403"]

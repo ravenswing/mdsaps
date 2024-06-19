@@ -151,14 +151,18 @@ def fes1D(
     ylims=None,
     walls=None,
     vlines=None,
+    ax=None,
 ):
-    # df = pd.read_table(fes_path, comment="#", sep="\s+", names=[cv, "free", "err"])
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 6), layout="constrained")
+        save = True
+    else:
+        save = False
+
     fes, cvs = load.fes(fes_path)
     assert len(cvs) == 1, "ERROR: More than 1 CV in FES. Please provide a 1D FES."
     cv = cvs[0]
     label = label if label else cv
-
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
     ax.plot(
         fes[cv].multiply(10), fes.free.divide(4.184), c=colours.default, label="FES"
@@ -197,9 +201,15 @@ def fes1D(
     ax.set_xlabel(label, c=colours.labels)
     ax.set_ylabel("Free Energy (kcal/mol)", c=colours.labels)
     ax.set_title(title, c=colours.labels)
-    fig.savefig(
-        save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
-    )
+    if save:
+        fig.savefig(
+            save_path,
+            bbox_inches="tight",
+            dpi=config.dpi,
+            transparent=config.transparency,
+        )
+    else:
+        return ax
     plt.close()
 
 
@@ -298,10 +308,21 @@ def diffusion(DIVS, path_frmt, save_frmt, shape, cvs):
 
 
 def hills(
-    hills_path, save_path, units="A", title="Hill Heights", xlims=None, ylims=None
+    hills_path,
+    save_path,
+    units="A",
+    title="Hill Heights",
+    xlims=None,
+    ylims=None,
+    ax=None,
 ):
     hills = load.hills(f"{hills_path}")
-    fig, ax = plt.subplots(figsize=(10, 6), layout="constrained")
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 6), layout="constrained")
+        save = True
+    else:
+        save = False
 
     ax.plot([x / 1000 for x in hills[0]], hills[1], c=colours.default)
     if xlims:
@@ -318,10 +339,16 @@ def hills(
     for spine in ax.spines.values():
         spine.set_edgecolor(colours.ax)
 
-    fig.savefig(
-        save_path, bbox_inches="tight", dpi=config.dpi, transparent=config.transparency
-    )
-    plt.close()
+    if save:
+        fig.suptitle(title, fontsize=sizes.title, c=colours.labels)
+        fig.savefig(
+            save_path,
+            bbox_inches="tight",
+            dpi=config.dpi,
+            transparent=config.transparency,
+        )
+    else:
+        return ax
 
 
 def hills_multi(DIVS, path_frmt, save_name, shape):

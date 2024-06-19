@@ -117,7 +117,7 @@ def run_reweight(
         f"-outfile {out_name}",
     ]
     command = " ".join(command)
-
+    log.info(command)
     try:
         subprocess.run(command, shell=True, check=True)
     except subprocess.CalledProcessError as error:

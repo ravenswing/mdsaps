@@ -350,12 +350,6 @@ for row in colvar:
     indx = int(ceil(float(i) / numcolv * numdat)) - 1
 
     bias = sum([row[j] for j in col_bias])
-    # FIX !!!
-    # THIS IS JANK!
-    # if bias > 1700:
-    #   print(bias / kT, ebetac[indx])
-    #  print(sorted([row[j] for j in col_bias]))
-    # bias = 1700
     ebias = exp(bias / kT) / ebetac[indx]
     fes[locs] += ebias
     denom += ebias

@@ -45,12 +45,20 @@ def colvar(filename: str, output: str = "as_pandas"):
 
 
 def fes(filename: str, np_output: bool = False, _is_rew: bool = False):
+    # Read in the header line of the FES file.
     with open(filename) as f:
-        fields = f.readlines()[0]
-    fields = fields.split()[2:]
+        header = f.readlines()[0].split()
+    # Sum_hills FES contain FIELDS line, so simply extract the column names.
+    if header[0] == "#!":
+        fields = header[2:]
+        # Standardise column naming (dependends sum_hills run with 1 or 2 CVs)
+        fields = [f.replace("projection", "free") for f in fields]
+        fields = [f.replace("file.free", "free") for f in fields]
+    # Reweighted FES (at the moment) do not have a header, so use dummy names.
+    else:
+        fields = [f"cv{i}" for i in np.arange(len(header) - 1) + 1] + ["free"]
 
-    fields = [f.replace("projection", "free") for f in fields]
-    fields = [f.replace("file.free", "free") for f in fields]
+    # Extract CV names - all column names before the free energy.
     cvs = fields[: fields.index("free")]
 
     if not np_output:
