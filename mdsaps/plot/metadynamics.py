@@ -27,7 +27,7 @@ def fes2D(
     dticks=(None, None),
     funnel=None,
     basins=None,
-    basin_lables=None,
+    basin_labels=None,
     contour_width=None,
     contour_max=None,
 ):
@@ -117,7 +117,7 @@ def fes2D(
 
     if basins:
         for i, b in enumerate(basins):
-            if basin_lables is None:
+            if basin_labels is None:
                 fig.add_shape(
                     type="rect",
                     x0=b[0],
@@ -135,7 +135,7 @@ def fes2D(
                     y0=b[2],
                     y1=b[3],
                     line_dash="dash",
-                    label=dict(text=str(i), font=dict(size=64)),
+                    label=dict(text=basin_labels[i], font=dict(size=64)),
                     line=dict(color=colours.labels, width=5),
                 )
 
