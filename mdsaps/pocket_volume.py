@@ -36,7 +36,7 @@ def aligned_dcd(wd: str, xtc_name: str, ref_path: str) -> None:
     aligner.run()
 
 
-def pocket_select(wd, out_name):
+def pocket_select(wd: str, out_name: str) -> None:
     mpck_cmd = [
         "mdpocket",
         "--trajectory_file",
@@ -57,7 +57,7 @@ def pocket_select(wd, out_name):
         )
 
 
-def pocket_volume(wd, out_name, ref_path):
+def pocket_volume(wd: str, out_name: str, ref_path: str) -> None:
     # TODO -> COPY FILES
     try:
         subprocess.run(f"cp {ref_path} {wd}", shell=True, check=True)
@@ -91,7 +91,7 @@ def pocket_volume(wd, out_name, ref_path):
         )
 
 
-def main():
+def main() -> None:
     systems = {
         "a2b1": ["A769", "PF739", "SC4", "MT47", "MK87"],
         "a2b2": ["A769", "PF739", "SC4", "MT47", "MK87"],

@@ -12,6 +12,7 @@ import numpy as np
 import pytraj as pt
 import subprocess
 from glob import glob
+from typing import Optional
 
 """
 import plotly.graph_objects as go
@@ -44,7 +45,7 @@ def _load_structure(in_str):
         raise ValueError("Structure not recognised")
 
 
-def _run_cpptraj(directory, input_file):
+def _run_cpptraj(directory: str, input_file: str) -> None:
     # Print a starting message
     print(f"STARTING  | CPPTRAJ with input:  {input_file}")
     # Run CPPTRAJ
@@ -60,7 +61,13 @@ def _run_cpptraj(directory, input_file):
     print(f"COMPLETED | CPPTRAJ with input:  {input_file}")
 
 
-def _traj_align(trj_path, top, out_path=None, ref_str=None, aln_mask="@CA,C,N,O"):
+def _traj_align(
+    trj_path: str,
+    top: str,
+    out_path: Optional[str] = None,
+    ref_str: Optional[str] = None,
+    aln_mask: str = "@CA,C,N,O",
+) -> None:
     # Load the trajectory w. topology
     full_trj = pt.iterload(trj_path, top)
     print(f"Loaded trajectory: {trj_path}")
@@ -73,7 +80,7 @@ def _traj_align(trj_path, top, out_path=None, ref_str=None, aln_mask="@CA,C,N,O"
     print(f"Saved new trajectory: {write_name}")
 
 
-def make_fulltraj(directory, ref_str):
+def make_fulltraj(directory: str, ref_str) -> None:
     # Get file base name from dir. name
     stem = directory.split("/")[-1]
     # Count the number of md steps run
@@ -107,7 +114,13 @@ def make_fulltraj(directory, ref_str):
     _run_cpptraj(directory, "fulltraj.in")
 
 
-def structure_align(in_str, ref_str, out_str, aln_mask="@CA,C,N,O", strip_mask=None):
+def structure_align(
+    in_str,
+    ref_str,
+    out_str: str,
+    aln_mask: str = "@CA,C,N,O",
+    strip_mask: Optional[str] = None,
+) -> None:
     # Load the initial structure
     to_align = _load_structure(in_str)
     ref = _load_structure(ref_str)
@@ -121,7 +134,9 @@ def structure_align(in_str, ref_str, out_str, aln_mask="@CA,C,N,O", strip_mask=N
     pt.write_traj(out_str, aligned, overwrite=True)
 
 
-def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
+def snapshot_pdbs(
+    directory: str, trj_path: str, top_path: str, ref_str, snapshots
+) -> None:
     # Make the directory for the output
     # TODO -> Make dir
     try:
@@ -179,7 +194,14 @@ def snapshot_pdbs(directory, trj_path, top_path, ref_str, snapshots):
                 )
 
 
-def cut_traj(trj_path, top, out_path, dt=100, split=False, strip_mask=None):
+def cut_traj(
+    trj_path: str,
+    top: str,
+    out_path: str,
+    dt: int = 100,
+    split: bool = False,
+    strip_mask: Optional[str] = None,
+) -> None:
     # Load the trajectory w. topology and run autoimage
     full_trj = pt.iterload(trj_path, top)
     full_trj = full_trj.autoimage()
@@ -201,7 +223,14 @@ def cut_traj(trj_path, top, out_path, dt=100, split=False, strip_mask=None):
     print(f"Saved new trajectory: {out_path}")
 
 
-def rmsd(trj_path, top_path, ref_str, rmsd_mask, aln_mask="@CA,C,N,O", nofit=True):
+def rmsd(
+    trj_path: str,
+    top_path: str,
+    ref_str,
+    rmsd_mask: str,
+    aln_mask: str = "@CA,C,N,O",
+    nofit: bool = True,
+):
     # Load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # Load ref. structure if path is given
@@ -215,7 +244,9 @@ def rmsd(trj_path, top_path, ref_str, rmsd_mask, aln_mask="@CA,C,N,O", nofit=Tru
     return data
 
 
-def rmsf(trj_path, top_path, ref_str, rmsf_mask, aln_mask="@CA,C,N,O"):
+def rmsf(
+    trj_path: str, top_path: str, ref_str, rmsf_mask: str, aln_mask: str = "@CA,C,N,O"
+):
     # Load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # Load ref. structure if path is given
@@ -230,8 +261,14 @@ def rmsf(trj_path, top_path, ref_str, rmsf_mask, aln_mask="@CA,C,N,O"):
 
 
 def extract_frame(
-    trj_path, top, out_path, ref_str=None, split=False, strip_mask=None, frame="final"
-):
+    trj_path: str,
+    top: str,
+    out_path: str,
+    ref_str=None,
+    split=False,
+    strip_mask: Optional[str] = None,
+    frame="final",
+) -> None:
     # Load the trajectory w. topology and run autoimage
     full_trj = pt.iterload(trj_path, top)
     full_trj = full_trj.autoimage()
@@ -244,7 +281,9 @@ def extract_frame(
     print(f"Saved new trajectory: {out_path}")
 
 
-def measure_dist(trj_path, top_path, atom_pair, ref_str, aln_mask="@CA,C,N,O"):
+def measure_dist(
+    trj_path: str, top_path: str, atom_pair, ref_str, aln_mask: str = "@CA,C,N,O"
+):
     # Load the trajectory w. topology
     traj = pt.iterload(trj_path, top_path)
     # Load ref. structure if path is given
@@ -258,7 +297,9 @@ def measure_dist(trj_path, top_path, atom_pair, ref_str, aln_mask="@CA,C,N,O"):
     return data
 
 
-def measure_angle(trj_path, top_path, angle_atoms, ref_str, aln_mask="@CA,C,N,O"):
+def measure_angle(
+    trj_path: str, top_path: str, angle_atoms, ref_str, aln_mask: str = "@CA,C,N,O"
+):
     # Check that correct atom/res mask is defined
     n_atoms = len(angle_atoms.split())
     assert n_atoms in [3, 4], "INPUT ERROR: Must have 3 or 4 atom groups."
@@ -280,7 +321,7 @@ def measure_angle(trj_path, top_path, angle_atoms, ref_str, aln_mask="@CA,C,N,O"
     return data
 
 
-def autoimage_file(top_file, crd_file):
+def autoimage_file(top_file: str, crd_file: str) -> None:
     """Convert a system from Amber --> PDB using PyTraj"""
     # Check that the topology has a readable extension
     assert top_file.split(".")[-1] in ["parm7", "prmtop"], "ERROR"

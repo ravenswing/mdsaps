@@ -4,16 +4,20 @@ import MDAnalysis as mda
 from MDAnalysis.analysis import encore
 from MDAnalysis.analysis.encore.clustering import ClusteringMethod as clm
 from pathlib import Path
+from typing import Optional
 
 from .. import tools, plot, load
 from ..config import CORES
 
 
 def get_indices(
-    colvar_path: str, cv_bounds, colvar_stride: int = None, return_info: bool = False
+    colvar_path: str,
+    cv_bounds,
+    colvar_stride: Optional[int] = None,
+    return_info: bool = False,
 ):
     colvar = load.colvar(colvar_path)
-    info = {"Initial Colvar Frames": len(colvar.index)}
+    info: dict[str, float] = {"Initial Colvar Frames": len(colvar.index)}
     if colvar_stride:
         colvar = colvar.iloc[::colvar_stride, :].reset_index(drop=True)
     info["Colvar Frames w. Stride"] = len(colvar.index)
@@ -183,7 +187,7 @@ def single_centroid(
         if "/" not in top_path
         else top_path
     )
-    out_path = (
+    output = (
         Path(traj_path).parent / Path(out_path)
         if "/" not in out_path
         else Path(out_path)
@@ -199,8 +203,8 @@ def single_centroid(
     save_centroids(
         cluster_collection,
         u,
-        out_path.parent,
-        out_name=out_path.stem,
+        str(output.parent),
+        out_name=output.stem,
         out_perc=False,
         _warn=False,
     )
