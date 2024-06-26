@@ -10,20 +10,15 @@ import pickle
 
 
 def hills(filename: str) -> list:
-    hills = [[], []]
     with open(filename) as f:
-        lines = f.readlines()
-    data = [s for s in lines if not s.startswith(("@", "#"))]
-    data = [[float(val) for val in ln.split()] for ln in data]
-    hills[0] = [ln[0] for ln in data]
-    hills[1] = [ln[5] for ln in data]
-    return hills
+        lines = [s for s in f.readlines() if not s.startswith(("@", "#"))]
+    data = [[float(val) for val in ln.split()] for ln in lines]
+    return [[ln[0] for ln in data], [ln[5] for ln in data]]
 
 
 def colvar(filename: str, output: str = "as_pandas"):
     with open(filename) as f:
-        head = f.readlines()[0]
-    head = head.split()[2:]
+        head = f.readlines()[0].split()[2:]
     # Read in old COLVAR file into DataFrame.
     # Filters out comment lines and splits columns via whitespace.
     old_col = pd.concat(
@@ -74,9 +69,8 @@ def fes(filename: str, np_output: bool = False, _is_rew: bool = False):
     else:
         fes = [[], [], []]
         with open(filename) as f:
-            lines = f.readlines()
-            data = [s for s in lines if not s.startswith(("@", "#"))]
-        data = [[float(val) for val in ln.split()] for ln in data]
+            lines = [s for s in f.readlines() if not s.startswith(("@", "#"))]
+        data = [[float(val) for val in ln.split()] for ln in lines]
         breaks = [i for i, e in enumerate(data) if e == []]
         # Remove blank lines
         for index in sorted(breaks, reverse=True):
@@ -100,21 +94,19 @@ def fes(filename: str, np_output: bool = False, _is_rew: bool = False):
     return fes, cvs
 
 
-def xvg(filename: str) -> list:
+def xvg(filename: str) -> list[list[float]]:
     """load xvg"""
     with open(filename) as f:
-        lines = f.readlines()
-        data = [s for s in lines if not s.startswith(("@", "#"))]
-    data = [[float(val) for val in ln.split()] for ln in data]
+        lines = [s for s in f.readlines() if not s.startswith(("@", "#"))]
+    data = [[float(val) for val in ln.split()] for ln in lines]
     return data
 
 
 def cd(filename: str) -> list:
     """load CD data"""
     with open(filename) as f:
-        lines = f.readlines()
-        data = [s for s in lines if not s.startswith(("@", "#"))]
-    data = [[float(val) for val in ln.split()] for ln in data]
+        lines = [s for s in f.readlines() if not s.startswith(("@", "#"))]
+    data = [[float(val) for val in ln.split()] for ln in lines]
     # data = [line for line in data if len(line) == 2]
     # if "SESCA" in filename: print(data)
     # out_data = [[l[0] for l in data], [l[1] for l in data]]
@@ -131,7 +123,6 @@ def p(filename: str):
 def pdb(filename: str) -> list:
     # Load complex pdb to edit
     with open(filename, "r") as f:
-        lines = f.readlines()
+        lines = [line.split() for line in f.readlines()]
     print(f"Loaded {filename}")
-    lines = [line.split() for line in lines]
     return lines

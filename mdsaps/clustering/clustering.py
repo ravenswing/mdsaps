@@ -100,11 +100,13 @@ def save_centroids(
     # Save centroid as pdb, with ID and percentage labels
     if pdbs:
         for i, size in enumerate(sizes):
-            pdb_name = f"{out_dir}/{out_name}{i}_{percentages[i]:.0f}%.pdb" if out_perc else f"{out_dir}/{out_name}.pdb"
+            pdb_name = (
+                f"{out_dir}/{out_name}{i}_{percentages[i]:.0f}%.pdb"
+                if out_perc
+                else f"{out_dir}/{out_name}.pdb"
+            )
             u.trajectory[clusters[i].centroid]
-            with mda.Writer(
-                pdb_name, u.atoms.n_atoms
-            ) as W:
+            with mda.Writer(pdb_name, u.atoms.n_atoms) as W:
                 W.write(u.atoms)
 
     if timestamp_csv:
@@ -195,7 +197,12 @@ def single_centroid(
     u = tools._init_universe([top_path, traj_path])
     # ...save the centroids as pdbs.
     save_centroids(
-        cluster_collection, u, out_path.parent, out_name=out_path.stem, out_perc=False, _warn=False
+        cluster_collection,
+        u,
+        out_path.parent,
+        out_name=out_path.stem,
+        out_perc=False,
+        _warn=False,
     )
 
 

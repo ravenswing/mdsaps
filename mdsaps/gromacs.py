@@ -11,6 +11,7 @@ import pandas as pd
 import subprocess
 from pathlib import Path
 from glob import glob
+from typing import Optional
 
 from . import load
 from .config import GMX
@@ -20,7 +21,12 @@ log.info("G.O.A.T. (Gromacs Organisation n' Analysis Tools) Loaded")
 
 
 def run_sumhills(
-    wd, out_name, new_dir: str = "fes", name: str = "HILLS", stride=None, cv=None
+    wd: str,
+    out_name: str,
+    new_dir: str = "fes",
+    name: str = "HILLS",
+    stride: Optional[float] = None,
+    cv: Optional[str] = None,
 ):
     """Outputs:
     - FES
@@ -72,12 +78,12 @@ def run_sumhills(
 
 
 def run_reweight(
-    wd,
-    cvs,
-    fes_prefix="FES",
-    colvar_name="COLVAR",
-    out_name="FES_REW",
-    bias_factor=10.0,
+    wd: str,
+    cvs: list[str],
+    fes_prefix: str = "FES",
+    colvar_name: str = "COLVAR",
+    out_name: str = "FES_REW",
+    bias_factor: float = 10.0,
 ):
     # TODO Add cv = None & 2 CVs in FES -> do 2D reweight
 
@@ -116,10 +122,9 @@ def run_reweight(
         f"-rewcol {column}",  # column(s) to reweight over
         f"-outfile {out_name}",
     ]
-    command = " ".join(command)
-    log.info(command)
+    log.debug(" ".join(command))
     try:
-        subprocess.run(command, shell=True, check=True)
+        subprocess.run(" ".join(command), shell=True, check=True)
     except subprocess.CalledProcessError as error:
         print(
             "Error code:",
@@ -130,7 +135,13 @@ def run_reweight(
 
 
 def sumhills_convergence(
-    wd, out_name, every=50, name="HILLS", cv=None, new_dir="convergence", overwrite=True
+    wd: str,
+    out_name: str,
+    every: int = 50,
+    name: str = "HILLS",
+    cv: Optional[str] = None,
+    new_dir: str = "convergence",
+    overwrite: bool = True,
 ):
     new_dir_path = f"{wd}/{new_dir}"
 
@@ -187,7 +198,7 @@ def cut_traj(
     trj_path: str,
     tpr: str,
     out_path: str,
-    dt=100,
+    dt: int = 100,
     ndx: str = "i.ndx",
     apo: bool = False,
 ) -> None:
@@ -233,7 +244,7 @@ def cut_traj(
         )
 
 
-def gismo_colvar(wd, in_colvar="COLVAR", out_colvar="GISMO.colvar"):
+def gismo_colvar(wd: str, in_colvar: str = "COLVAR", out_colvar: str = "GISMO.colvar"):
     """combine old and reweighted colvars"""
     # Load in the original COLVAR
     old_col = load.colvar(f"{wd}/{in_colvar}", "as_pandas")
@@ -376,7 +387,13 @@ def calculate_delta_g(fes_path, A, B, vol_corr=0, CVs=None):
     return delta_g
 
 
-def reconstruct_traj(trj_path, tpr, out_path=None, ndx="i.ndx", out_group="System"):
+def reconstruct_traj(
+    trj_path: str,
+    tpr: str,
+    out_path: Optional[str] = None,
+    ndx: str = "i.ndx",
+    out_group: str = "System",
+):
     # Assume working directory is same as traj if not specified
     tpr = tpr if "/" in tpr else "/".join(trj_path.split("/")[:-1]) + "/" + tpr
     ndx = ndx if "/" in ndx else "/".join(trj_path.split("/")[:-1]) + "/" + ndx
@@ -472,7 +489,9 @@ def reconstruct_traj(trj_path, tpr, out_path=None, ndx="i.ndx", out_group="Syste
     subprocess.run("rm /tmp/*.xtc", shell=True)
 
 
-def concat_traj(directory: str, stem: str = None, out_path: str = "full_traj.xtc"):
+def concat_traj(
+    directory: str, stem: Optional[str] = None, out_path: str = "full_traj.xtc"
+):
     # Assume input file extension based on output path
     ext = out_path.split(".")[-1]
 
@@ -492,7 +511,7 @@ def concat_traj(directory: str, stem: str = None, out_path: str = "full_traj.xtc
         )
 
 
-def snapshot_pdbs(trj_path, tpr, snapshots, ns=True, ref_str=None) -> None:
+def snapshot_pdbs(trj_path: str, tpr: str, snapshots, ns: bool = True) -> None:
     tpr = tpr if "/" in tpr else "/".join(trj_path.split("/")[:-1]) + "/" + tpr
     out_path = "/".join(trj_path.split("/")[:-1]) + "/snapshots"
 

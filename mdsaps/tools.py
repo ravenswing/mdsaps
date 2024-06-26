@@ -23,6 +23,7 @@ from numbers import Number
 from MDAnalysis.analysis import rms, distances, align
 from pathlib import Path
 from os.path import exists
+from typing import Optional
 
 from .config import CORES
 
@@ -166,9 +167,9 @@ def slice_traj(
     traj_path: str,
     top_path: str,
     out_path: str,
-    select: str = None,
+    select: Optional[str] = None,
     indices=None,
-    pdb_path: str = None,
+    pdb_path: Optional[str] = None,
     _check_frames: bool = False,
 ) -> None:
     top_path = (
@@ -424,8 +425,8 @@ def measure_com_dist(
     indices = np.arange(u.trajectory.n_frames) if indices is None else indices
     run_per_frame = partial(com_dist_per_frame, u=u, selections=[selectA, selectB])
     with Pool(CORES) as worker_pool:
-        result = worker_pool.map(run_per_frame, indices)
-    result = np.asarray(result).T
+        pool_output = worker_pool.map(run_per_frame, indices)
+    result = np.asarray(pool_output).T
     return pd.DataFrame.from_dict({"t": indices, "com": result})
 
 
@@ -465,8 +466,8 @@ def measure_dist(
     indices = np.arange(u.trajectory.n_frames) if indices is None else indices
     run_per_frame = partial(dist_per_frame, u=u, selections=[selectA, selectB])
     with Pool(CORES) as worker_pool:
-        result = worker_pool.map(run_per_frame, indices)
-    result = np.asarray(result).T
+        pool_output = worker_pool.map(run_per_frame, indices)
+    result = np.asarray(pool_output).T
     return pd.DataFrame.from_dict({"t": indices, "dist": result})
 
 
