@@ -542,3 +542,54 @@ def snapshot_pdbs(trj_path: str, tpr: str, snapshots, ns: bool = True) -> None:
                 ". Output:",
                 error.output.decode("utf-8"),
             )
+
+
+def run_driver(
+    trj_path: str,
+    top_path: str,
+    driver_input: str,
+    timestep: float = 0.002,
+    stride: int = 1000,
+    substitute: Optional[dict[str, str]] = None,
+) -> None:
+    top_path = (
+        top_path
+        if "/" in top_path
+        else "/".join(trj_path.split("/")[:-1]) + "/" + top_path
+    )
+    assert trj_path[-4] == ".xtc", "Trajectory must be of type XTC."
+    assert top_path[-4] == ".pdb", "Topology must be of type PDB."
+
+    try:
+        subprocess.run(
+            (
+                "plumed driver "
+                f"--plumed {driver_input} "
+                f"--pdb {top_path} "
+                f"--mf_xtc {trj_path} "
+                f"--trajectory-stride {stride} "
+                f"--timestep {timestep}"
+            ),
+            shell=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as error:
+        print(
+            "Error code:",
+            error.returncode,
+            ". Output:",
+            error.output.decode("utf-8"),
+        )
+
+    """
+    try:
+        subprocess.run(f"mv loop_distance.dat {wd}/", shell=True, check=True)
+    except subprocess.CalledProcessError as error:
+        print(
+            "Error code:",
+            error.returncode,
+            ". Output:",
+            error.output.decode("utf-8"),
+        )
+
+    """

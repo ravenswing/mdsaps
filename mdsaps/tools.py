@@ -19,7 +19,6 @@ import pytraj as pt
 import subprocess
 from multiprocessing import Pool
 from functools import partial
-from numbers import Number
 from MDAnalysis.analysis import rms, distances, align
 from pathlib import Path
 from os.path import exists
@@ -396,9 +395,7 @@ def save_rgyr(ids, top_path, trj_path, hdf_path, measure, align="backbone"):
     multiindex_hdf(rgyr, ids, hdf_path, "rgyr", "t")
 
 
-def calc_3D_dist(
-    x1: Number, y1: Number, z1: Number, x2: Number, y2: Number, z2: Number
-):
+def calc_3D_dist(x1: float, y1: float, z1: float, x2: float, y2: float, z2: float):
     return np.sqrt(np.square(x2 - x1) + np.square(y2 - y1) + np.square(z2 - z1))
 
 
