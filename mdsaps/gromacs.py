@@ -511,8 +511,17 @@ def concat_traj(
         )
 
 
-def snapshot_pdbs(trj_path: str, tpr: str, snapshots, ns: bool = True) -> None:
+def snapshot_pdbs(
+    trj_path: str,
+    tpr: str,
+    snapshots,
+    ndx: str,
+    out_group: str = "System",
+    ns: bool = True,
+) -> None:
     tpr = tpr if "/" in tpr else "/".join(trj_path.split("/")[:-1]) + "/" + tpr
+    ndx = ndx if "/" in ndx else "/".join(trj_path.split("/")[:-1]) + "/" + ndx
+    print(ndx)
     out_path = "/".join(trj_path.split("/")[:-1]) + "/snapshots"
 
     # TODO -> Make Dirs
@@ -530,8 +539,8 @@ def snapshot_pdbs(trj_path: str, tpr: str, snapshots, ns: bool = True) -> None:
     for ts in snapshots:
         ts = ts * 1000 if ns else ts
         cmd = (
-            f"echo 0 |gmx_mpi trjconv -f {trj_path} -s {tpr} "
-            f"-o {out_path}/{stem}_{ts}.pdb -dump  {ts}"
+            f"echo {out_group} |gmx_mpi trjconv -f {trj_path} -s {tpr} -n {ndx} "
+            f"-o {out_path}/{stem}_{ts}.pdb -dump {ts}"
         )
         try:
             subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL)
