@@ -566,8 +566,10 @@ def run_driver(
         if "/" in top_path
         else "/".join(trj_path.split("/")[:-1]) + "/" + top_path
     )
-    assert trj_path[-4] == ".xtc", "Trajectory must be of type XTC."
-    assert top_path[-4] == ".pdb", "Topology must be of type PDB."
+    assert trj_path[-4:] == ".xtc", "Trajectory must be of type XTC."
+    assert top_path[-4:] == ".pdb", "Topology must be of type PDB."
+
+    wd = "/".join(driver_input.split("/")[:-1])
 
     try:
         subprocess.run(
@@ -579,6 +581,7 @@ def run_driver(
                 f"--trajectory-stride {stride} "
                 f"--timestep {timestep}"
             ),
+            cwd=wd,
             shell=True,
             check=True,
         )
@@ -602,3 +605,29 @@ def run_driver(
         )
 
     """
+
+
+def transfer_colvar_bias(old_colvar, new_colvar, out_path=None):
+    clv1 = load.colvar(old_colvar)
+    clv2 = load.colvar(new_colvar)
+
+    out_path = new_colvar if out_path is None else out_path
+
+    assert len(clv1.index) == len(
+        clv2.index
+    ), "Different length Colvars NOT SUPPORTED YET"
+
+    clv2["meta.bias"] = clv1["meta.bias"]
+
+    clv2 = clv2.astype(float)
+
+    clv2 = clv2.drop("int_time", axis=1)
+
+    output = [f"#! FIELDS {' '.join(list(clv2.columns))}\n"]
+    for _, r in clv2.iterrows():
+        output.append(
+            f" {r.time:.6f} {' '.join([f'{r[field]:8.4f}' for field in list(clv2.columns)[1:]])}\n"
+        )
+
+    with open(out_path, "w") as f:
+        f.writelines(output)
