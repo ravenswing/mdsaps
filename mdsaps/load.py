@@ -33,6 +33,7 @@ def colvar(filename: str, output: str = "as_pandas"):
     old_col["int_time"] = old_col["time"].astype(float).astype(int)
     # Remove duplicate lines created by restarts
     old_col = old_col.drop_duplicates(subset="int_time", keep="last")
+    old_col = old_col.reset_index()
     if output == "as_pandas":
         return old_col
     elif output == "as_numpy":

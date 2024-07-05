@@ -121,8 +121,10 @@ def run_reweight(
         f"-biascol {bias_column}",  # column in COLVAR containing energy bias
         f"-rewcol {column}",  # column(s) to reweight over
         f"-outfile {out_name}",
+        "-v",
     ]
     log.debug(" ".join(command))
+    print(" ".join(command))
     try:
         subprocess.run(" ".join(command), shell=True, check=True)
     except subprocess.CalledProcessError as error:
@@ -607,7 +609,9 @@ def run_driver(
     """
 
 
-def transfer_colvar_bias(old_colvar, new_colvar, out_path=None):
+def transfer_colvar_bias(
+    old_colvar: str, new_colvar: str, out_path: Optional[str] = None
+) -> None:
     clv1 = load.colvar(old_colvar)
     clv2 = load.colvar(new_colvar)
 
