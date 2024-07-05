@@ -91,6 +91,8 @@ def run_reweight(
 
     colvar_path = f"{wd}/{colvar_name}"
     colvar = load.colvar(colvar_path)
+    print(colvar)
+    print(colvar.columns)
     bias_column = colvar.columns.get_loc("meta.bias") + 1
     n_fes = len(glob(f"{wd}/fes/{fes_prefix}*.dat"))
     if isinstance(cvs, str):
