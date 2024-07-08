@@ -162,269 +162,314 @@ def add_data_args(parser):
         "-bin",
         type=int,
         nargs="+",
-        default=[50],
         help="number of bins for the reweighted FES (default: %(default)s for each CV)",
     )
     group.add_argument("-v", "--verbose", action="store_true", help="be verbose")
 
 
-########################################################
-# PARSING INPUTS
-########################################################
+def setup_global_variables() -> None:
+    # kT in energy units (kJ or kcal)
+    global kT
+    kT = args.kt
 
-args = parse_args()
+    # biasfactor for Well-Tempered
+    global gamma
+    gamma = args.bsf
 
-# Well-Tempered Metadynamics or not
-if args.bsf is not None and args.bsf > 0:
-    tempered = True
-else:
-    tempered = False
-
-# biasfactor for Well-Tempered
-gamma = args.bsf
-
-# kT in energy units (kJ or kcal)
-kT = args.kt
-
-# ebetac file for loading
-ebetacFile = args.ebetac
-
-# ebetac file for saving
-ebetacSave = args.savelist
-
-# input FES file prefix
-fesfilename = args.fpref
-
-# number of FES file generated with sum_hills stride option
-# the more the better
-numdat = args.nf
-
-# column in FES file corresponding to the Free Energy
-# NB: the first column is 0
-col_fe = args.fcol - 1
-
-# name of the file containing the CVs on which to project the FES and the bias
-datafile = args.colvar
-
-# list with the columns of the CVs on which to project the FES
-# NB: the first column is 0
-col_rewt = [i - 1 for i in args.rewcol]
-numrewt = len(col_rewt)
-
-# list with column numbers of your datafile containing the bias
-# and any external bias/restraint/walls
-# NB: the first column is 0
-col_bias = [i - 1 for i in args.biascol]
-
-# NB: if I don't define -min or -max in the input, I will find their value scanning the COLVAR file
-s_min = args.min
-s_max = args.max
-
-# grid size for the reweighted FES
-ngrid = args.bin
-if len(ngrid) != numrewt:
-    if len(ngrid) == 1:
-        ngrid = [ngrid[0] for i in col_rewt]
+    # Well-Tempered Metadynamics or not
+    global is_well_tempered
+    if args.bsf is not None and args.bsf > 0:
+        is_well_tempered = True
     else:
-        print(
-            "ERROR: the number of grid dimensions (%d) does not match the number of reweighting CVs (%d)"
-            % (len(ngrid), numrewt)
-        )
-        exit(1)
+        is_well_tempered = False
 
-# output FES filename
-out_fes_xy = args.outfile
-
-# print some output while running
-verbose = args.verbose
+    # print some output while running
+    global verbose
+    verbose = args.verbose
 
 
 # CHECK IF NECESSARY FILES EXIST BEFORE STARTING
-def verify_inputs():
-
-    if not os.path.isfile(datafile):
-        print("ERROR: file %s not found, check your inputs" % datafile)
+def verify_inputs(colvar_file, exp_beta_ct_file, num_fes_files, fes_file_prefix):
+    if not os.path.isfile(colvar_file):
+        print("ERROR: file %s not found, check your inputs" % colvar_file)
         exit(1)
-    if ebetacFile:
-        if not os.path.isfile(ebetacFile):
-            print("ERROR: file %s not found, check your inputs" % ebetacFile)
+    if exp_beta_ct_file:
+        if not os.path.isfile(exp_beta_ct_file):
+            print("ERROR: file %s not found, check your inputs" % exp_beta_ct_file)
             exit(1)
     else:
-        for i in range(numdat):
-            fname = "%s%d.dat" % (fesfilename, i)
+        for i in range(num_fes_files):
+            fname = "%s%d.dat" % (fes_file_prefix, i)
             if not os.path.isfile(fname):
                 print("ERROR: file %s not found, check your inputs" % fname)
                 exit(1)
 
-verify_inputs()
 
-
-########################################################
 # FIRST PART: calculate c(t)
-# This part is independent on the number of CVs being biased
-# c(t) represents an estimate of the reversible
-# work performed on the system until time t
-########################################################
+def calculate_ct(num_fes_files, fes_file_prefix, fes_column_free) -> None:
+    # This part is independent on the number of CVs being biased
+    # c(t) represents an estimate of the reversible
+    # work performed on the system until time t
+    if verbose:
+        print("Reading FES files...")
 
-if verbose:
-    print("Reading FES files..")
-
-# calculates ebetac = exp(beta c(t)), using eq. 12 in eq. 3 in the JPCB paper
-if ebetacFile:
-    ebetac = list(np.loadtxt(ebetacFile))
-else:
+    # calculates ebetac = exp(beta c(t)), using eq. 12 in eq. 3 in the JPCB paper
     ebetac = []
-    for i in range(numdat):
-        if verbose and numdat > 10 and i % (numdat // 10) == 0:
-            print("%d of %d (%.0f%%) done" % (i, numdat, (i * 100.0 / numdat)))
+    for i in range(num_fes_files):
+        if verbose and num_fes_files > 10 and i % (num_fes_files // 10) == 0:
+            print(
+                "%d of %d (%.0f%%) done"
+                % (i, num_fes_files, (i * 100.0 / num_fes_files))
+            )
 
         ########################################
         # set appropriate format for FES file names, NB: i starts from 0
-        fname = "%s%d.dat" % (fesfilename, i)
-        # fname = '%s.%d' % (fesfilename,i+1)
+        fname = "%s%d.dat" % (fes_file_prefix, i)
+        # fname = '%s.%d' % (fes_file_prefix,i+1)
         ########################################
 
         data = np.loadtxt(fname)
         s1, s2 = 0.0, 0.0
-        if tempered:
+        if is_well_tempered:
             for p in data:
-                exponent = -p[col_fe] / kT
+                exponent = -p[fes_column_free] / kT
                 s1 += exp(exponent)
                 s2 += exp(exponent / gamma)
         else:
             for p in data:
-                s1 += exp(-p[col_fe] / kT)
+                s1 += exp(-p[fes_column_free] / kT)
             s2 = len(data)
-        ebetac += (s1 / s2,)
+        ebetac.append(s1 / s2)
 
-# this would be c(t):
-# coft = [ kT*log(x) for x in ebetac ]
+    # this would be c(t):
+    # coft = [ kT*log(x) for x in ebetac ]
 
-if ebetacSave:
-    np.savetxt("backup_ebetac.dat", ebetacSave)
+    return ebetac
 
-########################################################
-# SECOND PART: Boltzmann-like sampling for reweighting
-########################################################
 
-if verbose:
-    print("Calculating CV ranges..")
-
-# NB: loadtxt takes care of ignoring comment lines starting with '#'
-colvar = np.loadtxt(datafile)
-
-# find min and max of rew CV
-numcolv = 0
-calc_smin = False
-calc_smax = False
-
-if not s_min:
-    s_min = [9e99] * numrewt
-    calc_smin = True
-if not s_max:
-    s_max = [-9e99] * numrewt
-    calc_smax = True
-
-for row in colvar:
-    numcolv += 1
-
-    for i in range(numrewt):
-        col = col_rewt[i]
-        val = row[col]
-
-        if calc_smin:
-            if val < s_min[i]:
-                s_min[i] = val
-        if calc_smax:
-            if val > s_max[i]:
-                s_max[i] = val
-
-if verbose:
-    for i in range(numrewt):
-        print("CV[%d] range: %10.5f ; %10.5f" % (i, s_min[i], s_max[i]))
-
-# build the new square grid for the reweighted FES
-s_grid = [[]] * numrewt
-for i in range(numrewt):
-    ds = (s_max[i] - s_min[i]) / (ngrid[i] - 1)
-    s_grid[i] = [s_min[i] + n * ds for n in range(ngrid[i])]
+def calculate_cv_ranges(colvar_file, rew_dimension, colvar_rew_columns, s_min, s_max):
     if verbose:
-        print("Grid ds CV[%d]=%f" % (i, ds))
+        print("Calculating CV ranges..")
 
-if verbose:
-    print("Calculating reweighted FES..")
+    # NB: loadtxt takes care of ignoring comment lines starting with '#'
+    colvar = np.loadtxt(colvar_file)
 
-# initialize square array numrewt-dimensional
-fes = np.zeros(ngrid)
+    # find min and max of rew CV
+    calc_smin = False
+    calc_smax = False
 
-# go through the CV(t) trajectory
-denom = 0.0
-i = 0
-for row in colvar:
-    i += 1
+    if not s_min:
+        s_min = [9e99] * rew_dimension
+        calc_smin = True
+    if not s_max:
+        s_max = [-9e99] * rew_dimension
+        calc_smax = True
 
-    # build the array of grid indeces locs corresponding to the point closest to current point
-    locs = [[]] * numrewt
-    for j in range(numrewt):
-        col = col_rewt[j]
-        val = row[col]
-        diff = np.array([abs(gval - val) for gval in s_grid[j]])
-        locs[j] = [diff.argmin()]  # find position of minimum in diff array
+    for row in colvar:
+        for i in range(rew_dimension):
+            col = colvar_rew_columns[i]
+            val = row[col]
 
-    # find closest c(t) for this point of time
-    indx = int(ceil(float(i) / numcolv * numdat)) - 1
+            if calc_smin:
+                if val < s_min[i]:
+                    s_min[i] = val
+            if calc_smax:
+                if val > s_max[i]:
+                    s_max[i] = val
 
-    bias = sum([row[j] for j in col_bias])
-    ebias = exp(bias / kT) / ebetac[indx]
-    fes[locs] += ebias
-    denom += ebias
+    if verbose:
+        for i in range(rew_dimension):
+            print("CV[%d] range: %10.5f ; %10.5f" % (i, s_min[i], s_max[i]))
 
-# ignore warnings about log(0) and /0
-np.seterr(all="ignore")
-
-fes /= denom
-fes = -kT * np.log(fes)
-
-# set FES minimum to 0
-fes -= np.min(fes)
+    return s_min, s_max
 
 
-########################################################
-# OUTPUT RESULTS ON FILE
-########################################################
+# SECOND PART: Boltzmann-like sampling for reweighting
+def boltzmann_sampling(
+    colvar_file,
+    s_min,
+    s_max,
+    rew_dimension,
+    grid_shape,
+    colvar_rew_columns,
+    num_fes_files,
+    colvar_bias_columns,
+    ebetac,
+) -> None:
 
-if verbose:
-    print("Saving results on %s" % out_fes_xy)
+    # Load the colvar file into a numpy array
+    # NB: loadtxt takes care of ignoring comment lines starting with '#'
+    colvar = np.loadtxt(colvar_file)
 
-# save the FES in the format: FES(x,y) (one increment of y per row)
-# np.savetxt('fes_rew_matlabfmt.dat', fes, fmt='%.8e', delimiter=' ')
+    # Build the new square grid for the reweighted FES
+    s_grid = [[]] * rew_dimension
+    for i in range(rew_dimension):
+        ds = (s_max[i] - s_min[i]) / (grid_shape[i] - 1)
+        s_grid[i] = [s_min[i] + n * ds for n in range(grid_shape[i])]
+        if verbose:
+            print("Grid ds CV[%d]=%f" % (i, ds))
 
-# print the FES in the format:
-# x,y,z,FES(x,y,z) for 3D
-# x,y,FES(x,y) for 2D
-# x,FES(x) for 1D
-with open(out_fes_xy, "w") as f:
-    if numrewt == 3:
-        for nz, z in enumerate(s_grid[2]):
+    if verbose:
+        print("Calculating reweighted FES..")
+
+    # initialize square array rew_dimension-dimensional
+    fes = np.zeros(grid_shape)
+
+    # go through the CV(t) trajectory
+    denom = 0.0
+
+    for i, row in enumerate(colvar):
+        # build the array of grid indeces locs corresponding to the point closest to current point
+        locs = [] * rew_dimension
+
+        for j in range(rew_dimension):
+            col = colvar_rew_columns[j]
+            val = row[col]
+            diff = np.array([abs(gval - val) for gval in s_grid[j]])
+            locs.append(diff.argmin())  # find position of minimum in diff array
+
+        locs = tuple(locs)
+
+        # find closest c(t) for this point of time
+        indx = int(ceil(float(i) / len(colvar) * num_fes_files)) - 1
+
+        bias = sum([row[j] for j in colvar_bias_columns])
+        ebias = exp(bias / kT) / ebetac[indx]
+        fes[locs] += ebias
+        denom += ebias
+
+    # ignore warnings about log(0) and /0
+    np.seterr(all="ignore")
+
+    fes /= denom
+
+    fes = -kT * np.log(fes)
+
+    # set FES minimum to 0
+    fes -= np.min(fes)
+
+    return fes, s_grid
+
+
+# OUTPUT RESULTS TO FILE
+def save_output(output_file, rew_dimension, s_grid, fes) -> None:
+    if verbose:
+        print("Saving results on %s" % output_file)
+
+    # save the FES in the format: FES(x,y) (one increment of y per row)
+    # np.savetxt('fes_rew_matlabfmt.dat', fes, fmt='%.8e', delimiter=' ')
+
+    # print the FES in the format:
+    # x,y,z,FES(x,y,z) for 3D
+    # x,y,FES(x,y) for 2D
+    # x,FES(x) for 1D
+    with open(output_file, "w") as f:
+        if rew_dimension == 3:
+            for nz, z in enumerate(s_grid[2]):
+                for ny, y in enumerate(s_grid[1]):
+                    for nx, x in enumerate(s_grid[0]):
+                        f.write(
+                            "%20.12f %20.12f %20.12f %20.12f\n"
+                            % (x, y, z, fes[nx][ny][nz])
+                        )
+                    f.write("\n")
+        elif rew_dimension == 2:
             for ny, y in enumerate(s_grid[1]):
                 for nx, x in enumerate(s_grid[0]):
-                    f.write(
-                        "%20.12f %20.12f %20.12f %20.12f\n" % (x, y, z, fes[nx][ny][nz])
-                    )
+                    f.write("%20.12f %20.12f %20.12f\n" % (x, y, fes[nx][ny]))
                 f.write("\n")
-    elif numrewt == 2:
-        for ny, y in enumerate(s_grid[1]):
+        elif rew_dimension == 1:
             for nx, x in enumerate(s_grid[0]):
-                f.write("%20.12f %20.12f %20.12f\n" % (x, y, fes[nx][ny]))
-            f.write("\n")
-    elif numrewt == 1:
-        for nx, x in enumerate(s_grid[0]):
-            f.write("%20.12f %20.12f\n" % (x, fes[nx]))
-f.close()
+                f.write("%20.12f %20.12f\n" % (x, fes[nx]))
+    f.close()
+
 
 def main() -> None:
+    global args
+    args = parse_args()
+
+    setup_global_variables()
+
+    ### INPUT ARGUMENTS
+    # input FES file prefix
+    fes_file_prefix = args.fpref
+    # number of FES files generated with sum_hills stride option
+    # the more the better
+    num_fes_files = args.nf
+    # column in FES file corresponding to the Free Energy
+    # NB: the first column is 0
+    fes_column_free = args.fcol - 1
+
+    # name of the file containing the CVs on which to project the FES and the bias
+    colvar_file = args.colvar
+    # list with the columns of the CVs on which to project the FES
+    # NB: the first column is 0
+    colvar_rew_columns = [i - 1 for i in args.rewcol]
+    rew_dimension = len(colvar_rew_columns)
+    # list with column numbers of your colvar_file containing the bias
+    # and any external bias/restraint/walls
+    # NB: the first column is 0
+    colvar_bias_columns = [i - 1 for i in args.biascol]
+    # NB: if I don't define -min or -max in the input, I will find their value scanning the COLVAR file
+    s_min = args.min
+    s_max = args.max
+
+    # ebetac file for loading
+    exp_beta_ct_file = args.ebetac
+
+    ### OUTPUT ARGUMENTS
+    # ebetac file for saving
+    exp_beta_ct_save = args.savelist
+
+    # output FES filename
+    output_file = args.outfile
+
+    # grid size for the reweighted FES
+    if args.bin:
+        assert (
+            len(args.bin) == rew_dimension
+        ), f"ERROR: the number of -bin provided ({len(args.bin)}) does not match the dimension of reweighting CVs ({rew_dimension})"
+        grid_shape = args.bin
+    else:
+        grid_shape = [100] * rew_dimension
+
+    verify_inputs(colvar_file, exp_beta_ct_file, num_fes_files, fes_file_prefix)
+
+    if exp_beta_ct_file:
+        exp_beta_ct = list(np.loadtxt(exp_beta_ct_file))
+    else:
+        exp_beta_ct = calculate_ct(
+            num_fes_files,
+            fes_file_prefix,
+            fes_column_free,
+        )
+
+    if exp_beta_ct_save:
+        np.savetxt(exp_beta_ct_save, exp_beta_ct)
+
+    if all([s_min, s_max]):
+        print("Minima and Maxima provided")
+        cv_ranges_min = s_min
+        cv_ranges_max = s_max
+    else:
+        cv_ranges_min, cv_ranges_max = calculate_cv_ranges(
+            colvar_file, rew_dimension, colvar_rew_columns, s_min, s_max
+        )
+
+    fes, s_grid = boltzmann_sampling(
+        colvar_file,
+        cv_ranges_min,
+        cv_ranges_max,
+        rew_dimension,
+        grid_shape,
+        colvar_rew_columns,
+        num_fes_files,
+        colvar_bias_columns,
+        exp_beta_ct,
+    )
+
+    save_output(output_file, rew_dimension, s_grid, fes)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

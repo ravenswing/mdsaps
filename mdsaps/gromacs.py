@@ -87,7 +87,8 @@ def run_reweight(
 ):
     # TODO Add cv = None & 2 CVs in FES -> do 2D reweight
 
-    SCRIPT = "/home/rhys/mdsaps/mdsaps/lib/auxiliary_scripts/reweight.py"
+    # SCRIPT = "/home/rhys/mdsaps/mdsaps/lib/auxiliary_scripts/reweight.py"
+    SCRIPT = "/home/rhys/mdsaps/mdsaps/lib/auxiliary_scripts/wip_rew.py"
 
     colvar_path = f"{wd}/{colvar_name}"
     colvar = load.colvar(colvar_path)
