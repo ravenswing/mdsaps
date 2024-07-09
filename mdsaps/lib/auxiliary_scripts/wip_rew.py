@@ -296,7 +296,6 @@ def boltzmann_sampling(
     colvar_bias_columns,
     ebetac,
 ) -> None:
-
     # Load the colvar file into a numpy array
     # NB: loadtxt takes care of ignoring comment lines starting with '#'
     colvar = np.loadtxt(colvar_file)
@@ -391,40 +390,39 @@ def main() -> None:
     setup_global_variables()
 
     ### INPUT ARGUMENTS
-    # input FES file prefix
+    # Prefix for the input FES files (before number.dat)
     fes_file_prefix = args.fpref
-    # number of FES files generated with sum_hills stride option
-    # the more the better
+    # Number of FES files generated with sum_hills stride option (the more the better)
     num_fes_files = args.nf
-    # column in FES file corresponding to the Free Energy
+    # Column in FES file corresponding to the Free Energy
     # NB: the first column is 0
     fes_column_free = args.fcol - 1
 
-    # name of the file containing the CVs on which to project the FES and the bias
+    # Name of the file containing the CVs on which to project the FES and the bias
     colvar_file = args.colvar
-    # list with the columns of the CVs on which to project the FES
+    # List with the columns of the CVs on which to project the FES
     # NB: the first column is 0
     colvar_rew_columns = [i - 1 for i in args.rewcol]
     rew_dimension = len(colvar_rew_columns)
-    # list with column numbers of your colvar_file containing the bias
-    # and any external bias/restraint/walls
+    # List with column numbers of your colvar_file containing the bias
+    # and any external bias/restraint/walls --> CHECK
     # NB: the first column is 0
     colvar_bias_columns = [i - 1 for i in args.biascol]
+    # Minimum and maximum bounds of the CVs in the input
     # NB: if I don't define -min or -max in the input, I will find their value scanning the COLVAR file
     s_min = args.min
     s_max = args.max
 
-    # ebetac file for loading
+    # Optional: provide ebetac file for loading
     exp_beta_ct_file = args.ebetac
 
     ### OUTPUT ARGUMENTS
-    # ebetac file for saving
+    # Output FES filename
+    output_file = args.outfile
+    # Optional: ebetac file for saving
     exp_beta_ct_save = args.savelist
 
-    # output FES filename
-    output_file = args.outfile
-
-    # grid size for the reweighted FES
+    # Grid size for the reweighted FES
     if args.bin:
         assert (
             len(args.bin) == rew_dimension
