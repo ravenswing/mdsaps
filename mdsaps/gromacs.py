@@ -523,11 +523,16 @@ def snapshot_pdbs(
     ndx: str,
     out_group: str = "System",
     ns: bool = True,
+    out_dir: Optional[str] = None,
+    out_filename: Optional[str] = None,
 ) -> None:
     tpr = tpr if "/" in tpr else "/".join(trj_path.split("/")[:-1]) + "/" + tpr
     ndx = ndx if "/" in ndx else "/".join(trj_path.split("/")[:-1]) + "/" + ndx
-    print(ndx)
-    out_path = "/".join(trj_path.split("/")[:-1]) + "/snapshots"
+    out_path = (
+        "/".join(trj_path.split("/")[:-1]) + "/snapshots"
+        if out_dir is None
+        else out_dir
+    )
 
     # TODO -> Make Dirs
     # Make the directory for the output
@@ -539,13 +544,16 @@ def snapshot_pdbs(
         )
 
     # Define the output name
-    stem = trj_path.split("/")[-1].split(".")[0]
+    stem = (
+        trj_path.split("/")[-1].split(".")[0] if out_filename is None else out_filename
+    )
 
     for ts in snapshots:
+        out_ts = ts
         ts = ts * 1000 if ns else ts
         cmd = (
             f"echo {out_group} |gmx_mpi trjconv -f {trj_path} -s {tpr} -n {ndx} "
-            f"-o {out_path}/{stem}_{ts}.pdb -dump {ts}"
+            f"-o {out_path}/{stem}_{out_ts}.pdb -dump {ts}"
         )
         try:
             subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL)
