@@ -35,13 +35,13 @@ Typical usages:
 
 Example:
 
-reweight.py -bsf 5.0 -kt 2.5 -fpref fes2d- -nf 80 -fcol 3 
+reweight.py -bsf 5.0 -kt 2.5 -fpref fes2d- -nf 80 -fcol 3
             -colvar COLVAR -biascol 4 -rewcol 2 3
 
-takes as input 80 FES files: fes2d-0.dat, fes2d-1.dat, ..., fes2d-79.dat 
+takes as input 80 FES files: fes2d-0.dat, fes2d-1.dat, ..., fes2d-79.dat
 obtained using a well-tempered metadynamics with bias factor 5
 and containing the free energy in the 3rd column and the COLVAR file
-containing the bias in the 4th column and outputs the FES projected 
+containing the bias in the 4th column and outputs the FES projected
 on the CVs in column 2 and 3 of COLVAR file.
 
 Ludovico Sutto
