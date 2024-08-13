@@ -93,6 +93,7 @@ def save_centroids(
     u,
     out_dir: str,
     out_name: str = "cluster",
+    csv_name: str = "centroid_timestamps",
     pdbs: bool = True,
     out_perc: bool = True,
     timestamp_csv: bool = True,
@@ -124,7 +125,9 @@ def save_centroids(
         lines = ["Cluster No.,Centroid ID,Initial Trajectory Timestamp\n"]
         for i, c in enumerate(clusters):
             lines.append(f"{i},{c.centroid},{u.trajectory[c.centroid].time}\n")
-        with open(f"{out_dir}/centroid_timestamps.csv", "w") as f:
+
+        out_path = Path(f"{out_dir}/{csv_name}").with_suffix(".csv")
+        with open(out_path, "w") as f:
             f.writelines(lines)
 
 
@@ -205,6 +208,7 @@ def single_centroid(
         u,
         str(output.parent),
         out_name=output.stem,
+        csv_name=output.stem,
         out_perc=False,
         _warn=False,
     )
