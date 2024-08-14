@@ -136,3 +136,27 @@ def backbone_weights(df):
     df.loc[~df["temp"].isna(), "temp"] = 1
 
     return df
+
+
+def ligand_weights(df, ligand_resname, backbone=True, only_heavy_atoms=True):
+
+    # filter only backbone (removes TER, END)
+    if backbone:
+        df = df[(df["atom_name"].isin(["N", "CA", "C", "O"])) | (df["res_name"] == ligand_resname)]
+
+    if only_heavy_atoms:
+        df = df[~(df["atom_name"].str[0] == "H") | ~(df["res_name"] == ligand_resname)]
+
+    # Protein Backbone: align and don't measure
+    # set occupancy to 1 ==> alignment weight
+    df.loc[(~(df["res_name"] == ligand_resname) & ~(df["occupancy"].isna())), "occupancy"] = 1
+    # set temp factor (beta) to 0 ==> displacement calc. weight
+    df.loc[(~(df["res_name"] == ligand_resname) & ~(df["temp"].isna())), "temp"] = 0
+
+    # Ligand Atoms dont' align but measure
+    # set occupancy to 0 ==> alignment weight
+    df.loc[((df["res_name"] == ligand_resname) & ~(df["occupancy"].isna())), "occupancy"] = 0
+    # set temp factor (beta) to 1 ==> displacement calc. weight
+    df.loc[((df["res_name"] == ligand_resname) & ~(df["temp"].isna())), "temp"] = 1
+
+    return df
