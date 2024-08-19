@@ -26,7 +26,7 @@ def _process_atom(line):
     return pd.DataFrame(entry)
 
 
-def read_pdb(path, remove_seg_id=True):
+def read_pdb(path, remove_seg_id=True) -> pd.DataFrame:
     with open(path, "r") as f:
         lines = f.read().splitlines()
 
@@ -130,7 +130,8 @@ def write_pdb(df, out_path: str):
 def backbone_weights(df):
     # filter only backbone (removes TER, END)
     df = df[df["atom_name"].isin(["N", "CA", "C", "O"])]
-    # set occupancy to 1 ==> alignment weight
+
+    # set occupancy to 1 ==> alignment weigh
     df.loc[~df["occupancy"].isna(), "occupancy"] = 1
     # set temp factor (beta) to 1 ==> displacement calc. weight
     df.loc[~df["temp"].isna(), "temp"] = 1
@@ -138,24 +139,67 @@ def backbone_weights(df):
     return df
 
 
-def ligand_weights(df, ligand_resname, backbone=True, only_heavy_atoms=True):
+def ligand_weights(
+    df,
+    ligand_resname: str,
+    prot_align = None,
+    ligand_atoms = None,
+    only_heavy_atoms: bool = True,
+):
+
+    if prot_align is None or prot_align == "backbone":
+        print("Default behaviour ==> align over backbone.")
+        backbone = True
+        c_alphas = False
+    elif prot_align == "c-alphas":
+        print("Align over C-alphas.")
+        backbone = False
+        c_alphas = True
+    elif prot_align == "all":
+        print("Align over all protein atoms")
+        backbone = False
+        c_alphas = False
+    else:
+        print("prot_align input not recognised")
+        raise IOError
 
     # filter only backbone (removes TER, END)
     if backbone:
-        df = df[(df["atom_name"].isin(["N", "CA", "C", "O"])) | (df["res_name"] == ligand_resname)]
+        df = df[
+            (df["atom_name"].isin(["N", "CA", "C", "O"]))
+            | (df["res_name"] == ligand_resname)
+        ]
 
+    # filter only protein C-alphas (removes TER, END)
+    if c_alphas:
+        df = df[
+            (df["atom_name"] == "CA")
+            | (df["res_name"] == ligand_resname)
+        ]
+
+    # filter out heavy atoms from ligand
     if only_heavy_atoms:
         df = df[~(df["atom_name"].str[0] == "H") | ~(df["res_name"] == ligand_resname)]
 
+    # filter out atoms not included in the list (atom IDs)
+    if ligand_atoms is not None:
+        df = df[
+            (df["atom_id"].isin(ligand_atoms)) | ~(df["res_name"] == ligand_resname)
+        ]
+
     # Protein Backbone: align and don't measure
     # set occupancy to 1 ==> alignment weight
-    df.loc[(~(df["res_name"] == ligand_resname) & ~(df["occupancy"].isna())), "occupancy"] = 1
+    df.loc[
+        (~(df["res_name"] == ligand_resname) & ~(df["occupancy"].isna())), "occupancy"
+    ] = 1
     # set temp factor (beta) to 0 ==> displacement calc. weight
     df.loc[(~(df["res_name"] == ligand_resname) & ~(df["temp"].isna())), "temp"] = 0
 
     # Ligand Atoms: don't align but measure
     # set occupancy to 0 ==> alignment weight
-    df.loc[((df["res_name"] == ligand_resname) & ~(df["occupancy"].isna())), "occupancy"] = 0
+    df.loc[
+        ((df["res_name"] == ligand_resname) & ~(df["occupancy"].isna())), "occupancy"
+    ] = 0
     # set temp factor (beta) to 1 ==> displacement calc. weight
     df.loc[((df["res_name"] == ligand_resname) & ~(df["temp"].isna())), "temp"] = 1
 
