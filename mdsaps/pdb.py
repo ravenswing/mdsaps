@@ -142,14 +142,38 @@ def backbone_weights(df):
 def ligand_weights(
     df,
     ligand_resname: str,
-    ligand_atoms=None,
-    backbone: bool = True,
+    prot_align = None,
+    ligand_atoms = None,
     only_heavy_atoms: bool = True,
 ):
+
+    if prot_align is None or prot_align == "backbone":
+        print("Default behaviour ==> align over backbone.")
+        backbone = True
+        c_alphas = False
+    elif prot_align == "c-alphas":
+        print("Align over C-alphas.")
+        backbone = False
+        c_alphas = True
+    elif prot_align == "all":
+        print("Align over all protein atoms")
+        backbone = False
+        c_alphas = False
+    else:
+        print("prot_align input not recognised")
+        raise IOError
+
     # filter only backbone (removes TER, END)
     if backbone:
         df = df[
             (df["atom_name"].isin(["N", "CA", "C", "O"]))
+            | (df["res_name"] == ligand_resname)
+        ]
+
+    # filter only protein C-alphas (removes TER, END)
+    if c_alphas:
+        df = df[
+            (df["atom_name"] == "CA")
             | (df["res_name"] == ligand_resname)
         ]
 
