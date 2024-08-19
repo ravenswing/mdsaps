@@ -153,7 +153,7 @@ def ligand_weights(df, ligand_resname, backbone=True, only_heavy_atoms=True):
     # set temp factor (beta) to 0 ==> displacement calc. weight
     df.loc[(~(df["res_name"] == ligand_resname) & ~(df["temp"].isna())), "temp"] = 0
 
-    # Ligand Atoms dont' align but measure
+    # Ligand Atoms: don't align but measure
     # set occupancy to 0 ==> alignment weight
     df.loc[((df["res_name"] == ligand_resname) & ~(df["occupancy"].isna())), "occupancy"] = 0
     # set temp factor (beta) to 1 ==> displacement calc. weight
