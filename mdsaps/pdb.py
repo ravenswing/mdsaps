@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def process_atom(line):
+def _process_atom(line):
     entry = {
         "record": line[0:6],
         "atom_id": line[6:11],
@@ -52,7 +52,7 @@ def read_pdb(path, remove_seg_id=True):
     )
     for line in lines:
         if line[0:4] == "ATOM":
-            new_entry = process_atom(line)
+            new_entry = _process_atom(line)
             df = pd.concat([df, new_entry], ignore_index=True)
         elif line.split()[0] in ["TER", "END", "ENDMDL"]:
             df = pd.concat(
@@ -84,7 +84,7 @@ def read_pdb(path, remove_seg_id=True):
     return df
 
 
-def format_name(name: str) -> str:
+def _format_name(name: str) -> str:
     # Full length names are left unchanged
     if len(name) == 4:
         return name
@@ -93,11 +93,11 @@ def format_name(name: str) -> str:
         return f" {name:<3}"
 
 
-def format_atom(entry):
+def _format_atom(entry):
     new_line = (
         f"{entry.record:<6}"
         f"{entry.atom_id:>5.0f} "
-        f"{format_name(entry.atom_name)}"
+        f"{_format_name(entry.atom_name)}"
         f"{entry.altloc:1}"
         f"{entry.res_name:3} "
         f"{entry.chain_id:1}"
@@ -120,7 +120,7 @@ def write_pdb(df, out_path: str):
     output = []
     for _, line in df.iterrows():
         if line.record == "ATOM":
-            output.append(format_atom(line))
+            output.append(_format_atom(line))
         else:
             output.append(f"{line.record}\n")
     with open(out_path, "w") as f:

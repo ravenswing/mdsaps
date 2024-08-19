@@ -8,6 +8,18 @@ import numpy as np
 import pandas as pd
 import pickle
 
+from .pdb import read_pdb
+
+
+def pdb(filename: str, as_df: bool = False):
+    if as_df == True:
+        return read_pdb(filename)
+    else:
+        # Load complex pdb to edit
+        with open(filename, "r") as f:
+            lines = [line.split() for line in f.readlines()]
+        print(f"Loaded {filename}")
+        return lines
 
 def hills(filename: str) -> list:
     with open(filename) as f:
@@ -119,11 +131,3 @@ def p(filename: str):
     """Simple 1D pickle load"""
     with open(filename, "rb") as f:
         return pickle.load(f)
-
-
-def pdb(filename: str) -> list:
-    # Load complex pdb to edit
-    with open(filename, "r") as f:
-        lines = [line.split() for line in f.readlines()]
-    print(f"Loaded {filename}")
-    return lines
