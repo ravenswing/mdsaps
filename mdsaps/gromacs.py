@@ -220,24 +220,15 @@ def cut_traj(
     out_group = "Protein" if apo else "Protein_LIG"
     # Create the trjconv command from user input
     cmd = [
-        "echo",
-        "Backbone",
-        out_group,
-        "|",
+        f"echo Backbone {out_group} |",
         GMX,
         "trjconv ",
-        "-s",
-        tpr,
-        "-f",
-        trj_path,
-        "-o",
-        out_path,
-        "-n",
-        ndx,
-        "-dt",
-        str(dt),
-        "-fit",
-        "rot+trans",
+        f"-s {tpr}",
+        f"-f {trj_path}",
+        f"-o {out_path}",
+        f"-n {ndx}",
+        f"-dt {str(dt)}",
+        "-fit rot+trans",
     ]
     log.debug(f"{' '.join(cmd)}")
     # Run the trjconv command
@@ -414,21 +405,14 @@ def reconstruct_traj(
     # Step 1: -pbc whole, produces tmp1.xtc
     #    N.B. does not run if ignore_pbc as the only change is the -pbc flag
     cmd = [
-        "echo",
-        f"{out_group}",
-        "|",
+        f"echo {out_group} |",
         GMX,
         "trjconv",
-        "-f",
-        trj_path,
-        "-s",
-        tpr,
-        "-n",
-        ndx,
-        "-o",
-        "/tmp/tmp1.xtc",
-        "-pbc",
-        "whole",
+        f"-f {trj_path}",
+        f"-s {tpr}",
+        f"-n {ndx}",
+        "-o /tmp/tmp1.xtc",
+        "-pbc whole",
     ]
     if ignore_pbc == False:
         log.debug(f"{' '.join(cmd)}")
@@ -442,22 +426,14 @@ def reconstruct_traj(
     step2_input = trj_path if ignore_pbc else "/tmp/tmp1.xtc"
     # Step 2: -pbc cluster, produces tmp2.xtc
     cmd = [
-        "echo",
-        "Protein",
-        f"{out_group}",
-        "|",
+        f"echo Protein {out_group} |",
         GMX,
         "trjconv",
-        "-f",
-        step2_input,
-        "-s",
-        tpr,
-        "-n",
-        ndx,
-        "-o",
-        "/tmp/tmp2.xtc",
-        "-pbc",
-        "cluster",
+        f"-f {step2_input}",
+        f"-s {tpr}",
+        f"-n {ndx}",
+        "-o /tmp/tmp2.xtc",
+        "-pbc cluster",
     ]
     log.debug(f"{' '.join(cmd)}")
     try:
@@ -468,24 +444,19 @@ def reconstruct_traj(
         )
     # run trjconv to produce a readable output
     cmd = [
-        "echo",
-        "Protein",
-        f"{out_group}",
-        "|",
+        f"echo Protein {out_group} |",
         GMX,
         "trjconv",
-        "-f",
-        "/tmp/tmp2.xtc",
+        "-f /tmp/tmp2.xtc",
         f"-s {tpr}",
         f"-n {ndx}",
-        "-o",
-        out_path,
-        "-ur",
-        "compact",
+        f"-o {out_path}",
         "-center",
     ]
     if ignore_pbc == False:
-        cmd.append("-pbc mol")
+        cmd.append("-pbc mol -ur compact")
+    else:
+        cmd.append("-pbc cluster")
     log.debug(f"{' '.join(cmd)}")
     try:
         subprocess.run(" ".join(cmd), shell=True, check=True, stdout=subprocess.DEVNULL)
