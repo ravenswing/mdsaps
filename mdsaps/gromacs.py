@@ -205,6 +205,7 @@ def cut_traj(
     out_path: str,
     dt: int = 100,
     ndx: str = "i.ndx",
+    fit: bool = True,
     apo: bool = False,
 ) -> None:
     """cutdown the trajectories using Gromacs trjconv ready for GISMO"""
@@ -228,8 +229,9 @@ def cut_traj(
         f"-o {out_path}",
         f"-n {ndx}",
         f"-dt {str(dt)}",
-        "-fit rot+trans",
     ]
+    if fit:
+        cmd.append("-fit rot+trans")
     log.debug(f"{' '.join(cmd)}")
     # Run the trjconv command
     try:
@@ -444,7 +446,7 @@ def reconstruct_traj(
         )
     # run trjconv to produce a readable output
     cmd = [
-        f"echo Protein Protein {out_group} |",
+        f"echo Protein {out_group} |",
         GMX,
         "trjconv",
         "-f /tmp/tmp2.xtc",
@@ -455,8 +457,6 @@ def reconstruct_traj(
     ]
     if ignore_pbc == False:
         cmd.append("-pbc mol -ur compact")
-    else:
-        cmd.append("-pbc cluster")
     log.debug(f"{' '.join(cmd)}")
     try:
         subprocess.run(" ".join(cmd), shell=True, check=True, stdout=subprocess.DEVNULL)
