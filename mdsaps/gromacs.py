@@ -444,7 +444,7 @@ def reconstruct_traj(
         )
     # run trjconv to produce a readable output
     cmd = [
-        f"echo Protein {out_group} |",
+        f"echo Protein Protein {out_group} |",
         GMX,
         "trjconv",
         "-f /tmp/tmp2.xtc",
