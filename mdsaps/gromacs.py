@@ -218,10 +218,15 @@ def cut_traj(
     )
     ndx = ndx if "/" in ndx else "/".join(trj_path.split("/")[:-1]) + "/" + ndx
     log.info(f"Cutting Trajectory {trj_path.split('/')[-1]}")
-    out_group = "Protein" if apo else "Protein_LIG"
-    # Create the trjconv command from user input
+
+    # Designate the group to save, with Ligand atoms if the system is holo
+    groups = "Protein" if apo else "Protein_LIG"
+    # If fitting, assign the atoms to fit by (always comes before output groups)
+    groups = "Backbone " + groups if fit else groups
+
+    # Cut the trajectory by dt
     cmd = [
-        f"echo Backbone {out_group} |",
+        f"echo {groups} |",
         GMX,
         "trjconv ",
         f"-s {tpr}",
