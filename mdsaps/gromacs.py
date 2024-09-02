@@ -173,7 +173,7 @@ def sumhills_convergence(
 
 """
 def run_trjconv(options: list[str], echo: list[str] = None):
-    
+
     out_file = ["#!/bin/bash", "touch ./COMPLETED"]
 
     if echo:
@@ -186,7 +186,7 @@ def run_trjconv(options: list[str], echo: list[str] = None):
         f.writelines(out_file)
 
     subprocess.run('bash /tmp/trjconv_in.sh', shell=True)
-    
+
     signal_path = Path("/tmp/COMPLETED")
     while not signal_path.exists():
         sleep(5)
@@ -398,6 +398,7 @@ def reconstruct_traj(
     out_path: Optional[str] = None,
     ndx: str = "i.ndx",
     out_group: str = "System",
+    ignore_pbc: bool = False,
 ):
     # Assume working directory is same as traj if not specified
     tpr = tpr if "/" in tpr else "/".join(trj_path.split("/")[:-1]) + "/" + tpr
@@ -409,7 +410,9 @@ def reconstruct_traj(
         )
     elif "/" not in out_path:
         out_path = "/".join(trj_path.split("/")[:-1]) + "/" + out_path
+
     # Step 1: -pbc whole, produces tmp1.xtc
+    #    N.B. does not run if ignore_pbc as the only change is the -pbc flag
     cmd = [
         "echo",
         f"{out_group}",
@@ -427,13 +430,16 @@ def reconstruct_traj(
         "-pbc",
         "whole",
     ]
-    log.debug(f"{' '.join(cmd)}")
-    try:
-        subprocess.run(" ".join(cmd), shell=True, check=True, stdout=subprocess.DEVNULL)
-    except subprocess.CalledProcessError as error:
-        print(
-            "Error code:", error.returncode, ". Output:", error.output.decode("utf-8")
-        )
+    if ignore_pbc == False:
+        log.debug(f"{' '.join(cmd)}")
+        try:
+            subprocess.run(" ".join(cmd), shell=True, check=True, stdout=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as error:
+            print(
+                "Error code:", error.returncode, ". Output:", error.output.decode("utf-8")
+            )
+    # As step 1 is not run if ignore_pbc, set to original traj file in that case
+    step2_input = trj_path if ignore_pbc else "/tmp/tmp1.xtc"
     # Step 2: -pbc cluster, produces tmp2.xtc
     cmd = [
         "echo",
@@ -443,7 +449,7 @@ def reconstruct_traj(
         GMX,
         "trjconv",
         "-f",
-        "/tmp/tmp1.xtc",
+        step2_input,
         "-s",
         tpr,
         "-n",
@@ -470,18 +476,16 @@ def reconstruct_traj(
         "trjconv",
         "-f",
         "/tmp/tmp2.xtc",
-        "-s",
-        tpr,
-        "-n",
-        ndx,
+        f"-s {tpr}",
+        f"-n {ndx}",
         "-o",
         out_path,
-        "-pbc",
-        "mol",
         "-ur",
         "compact",
         "-center",
     ]
+    if ignore_pbc == False:
+        cmd.append("-pbc mol")
     log.debug(f"{' '.join(cmd)}")
     try:
         subprocess.run(" ".join(cmd), shell=True, check=True, stdout=subprocess.DEVNULL)
