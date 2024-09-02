@@ -19,6 +19,7 @@ sizes = config.sizes
 def fes2D(
     fes_path,
     save_path,
+    cvs=None,
     units="A",
     title: str = "2D Free Energy Surface",
     labels=None,
@@ -45,7 +46,13 @@ def fes2D(
         data[1] = np.multiply(data[1], 10)
     """
 
-    fes, cvs = load.fes(fes_path)
+    # For COLVARS with more than 2 CVs, allow the selection of 2.
+    if cvs is not None:
+        assert len(cvs) == 2, "Must provide two CVs for plotting."
+        fes, _ = load.fes(fes_path)
+    else:
+        fes, cvs = load.fes(fes_path)
+        assert len(cvs) == 2, "Number of CVs found in FES not equal to 2. Please specify with cvs."
 
     labels = labels if labels else cvs
     # default value for fun-metaD etc. = 2
