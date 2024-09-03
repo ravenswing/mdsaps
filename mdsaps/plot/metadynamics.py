@@ -223,10 +223,10 @@ def fes1D(
 def cvs(
     colvar_path,
     cvs,
-    cv_labels,
     save_path="cvs.png",
     units="A",
     title="CV Diffusion",
+    cv_labels=None,
     xlims=None,
     ylims=None,
     mean=False,
