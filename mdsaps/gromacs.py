@@ -462,6 +462,8 @@ def reconstruct_traj(
     ]
     if ignore_pbc == False:
         cmd.append("-pbc mol -ur compact")
+    else:
+        cmd.append("-pbc nojump")
     log.debug(f"{' '.join(cmd)}")
     try:
         subprocess.run(" ".join(cmd), shell=True, check=True, stdout=subprocess.DEVNULL)
