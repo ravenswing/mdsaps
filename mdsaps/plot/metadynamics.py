@@ -347,7 +347,6 @@ def hills(
         spine.set_edgecolor(colours.ax)
 
     if save:
-        fig.suptitle(title, fontsize=sizes.title, c=colours.labels)
         fig.savefig(
             save_path,
             bbox_inches="tight",
