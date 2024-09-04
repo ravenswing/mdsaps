@@ -46,6 +46,7 @@ def colvar(filename: str, output: str = "as_pandas"):
     # Remove duplicate lines created by restarts
     old_col = old_col.drop_duplicates(subset="int_time", keep="last")
     old_col = old_col.reset_index(drop=True)
+
     if output == "as_pandas":
         return old_col
     elif output == "as_numpy":

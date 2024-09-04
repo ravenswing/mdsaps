@@ -1,11 +1,3 @@
-"""
-===============================================================================
-                    Gromacs Organisation n' Analysis Tools
-===============================================================================
-
-    - sumhills
-"""
-
 import logging
 import pandas as pd
 import subprocess
@@ -628,3 +620,152 @@ def transfer_colvar_bias(
 
     with open(out_path, "w") as f:
         f.writelines(output)
+
+# ------------------------------------------------------------------------------------------------
+# GENRES => manipulate restraint files, position- and distance-based
+def load_disres_file(path) -> pd.DataFrame:
+    with open(path, "r") as f:
+        lines = f.readlines()
+
+    header: list[str] = [line for line in lines if line[0] in ["[", ";"]]
+    assert (
+        "[ distance_restraints ]\n" in header
+    ), "No distance restraints found in file."
+
+    columns: list[str] = [
+        "atomA",
+        "atomB",
+        "type",
+        "label",
+        "funct",
+        "lo",
+        "up1",
+        "up2",
+        "weight",
+    ]
+    df = pd.read_table(path, sep="\s+", skiprows=4, comment=";", names=columns)
+
+    return df
+
+
+def load_posres_file(path) -> pd.DataFrame:
+    with open(path, "r") as f:
+        lines = f.readlines()
+
+    header: list[str] = [line for line in lines if line[0] in ["[", ";"]]
+    assert (
+        "[ position_restraints ]\n" in header
+    ), "No position restraints found in file."
+
+    columns: list[str] = [
+        "atom",
+        "funct",
+        "fcx",
+        "fcy",
+        "fcz",
+    ]
+    df = pd.read_table(path, sep="\s+", skiprows=4, comment=";", names=columns)
+
+    return df
+
+
+def write_disres_file(df, out_path, fc) -> None:
+    out_lines = [
+        "; Distance restraints defined for multi-chain protein",
+        "",
+        "[ intermolecular_interactions ]",
+        "[ bonds ]",
+        ";   ai    aj  type        low        up1        up2         fc",
+    ]
+    type: int = 10
+    for l, row in df.iterrows():
+        out_lines.append(
+            f"{row.atomA:>6.0f}{row.atomB:>6.0f}{type:>6}{row.lo:>11}{row.up1:>11}{row.up2:>11}{fc:>11.2f}"
+        )
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(out_lines))
+
+
+def write_posres_files(df, out_path, fc=None) -> None:
+    out_lines = [
+        "; Position restraints defined for multi-chain protein",
+        "",
+        "[ position_restraints ]",
+        ";    i funct        fcx        fcy        fcz",
+    ]
+
+    for l, row in df.iterrows():
+        if fc is None:
+            fcx, fcy, fcz = (row.fcx, row.fcy, row.fcz)
+        elif isinstance(fc, float) or isinstance(fc, int):
+            fcx, fcy, fcz = (fc, fc, fc)
+        elif isinstance(fc, list) and len(fc) == 3:
+            fcx, fcy, fcz = (fc[0], fc[1], fc[2])
+        else:
+            raise IOError
+        out_lines.append(
+            f"{row.atom:>6.0f}{row.funct:>6.0f}{fcx:>11.1f}{fcy:>11.1f}{fcz:>11.1f}"
+        )
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(out_lines))
+
+
+def process_disres(
+    filename: str = "./posres_open_25kcal.itp",
+    outname: str = "./a2b1+SC4_open_posres",
+    fcs: list[float] = [25],
+    convert: bool = True,
+    chains_final_atoms=[4394],
+) -> None:
+    # TODO -> add support for list of chains
+    assert len(chains_final_atoms) == 1, "Currently only 2 Chains (1 split) supported."
+
+    itp_path = Path(filename)
+    out_path = Path(outname)
+
+    df = load_disres_file(itp_path)
+
+    for i, fc in enumerate(fcs):
+        if convert:
+            units = "kcal"
+            fc = fc * 4.184
+            print(
+                f"  INFO ==> Using force constant {fc:.2f} kJ/molnm2 (converted from {fcs[i]} kcal/molnm2)"
+            )
+        else:
+            units = "kJ"
+            print(f"  INFO ==> Using force constant {fc:.2f} kJ/molnm2")
+
+        to_save = out_path.with_name(out_path.name + f"_{fcs[i]}{units}").with_suffix(
+            ".itp"
+        )
+
+        write_disres_file(df, to_save, fc)
+
+
+def process_posres(
+    filename: str = "./posres_open_25kcal.itp",
+    outname: str = "./a2b1+SC4_openTEST_posres",
+    chains_final_atoms=[4394],
+    fcs: Optional[list[float]] = None,
+    convert: Optional[bool] = None,
+) -> None:
+    # TODO -> add support for list of chains
+    assert len(chains_final_atoms) == 1, "Currently only 2 Chains (1 split) supported."
+
+    itp_path = Path(filename)
+    out_path = Path(outname)
+
+    df = load_posres_file(itp_path)
+
+    # Select sets of interactions
+    df1 = df.loc[df["atom"] <= chains_final_atoms[0], :].copy()
+    write_posres_files(df1, out_path.with_name(out_path.name + "1").with_suffix(".itp"))
+
+    df2 = df.loc[df["atom"] > chains_final_atoms[0], :].copy()
+    df2["atom"] = df2["atom"].subtract(chains_final_atoms[0])
+    print(df2)
+
+    write_posres_files(df2, out_path.with_name(out_path.name + "2").with_suffix(".itp"))
