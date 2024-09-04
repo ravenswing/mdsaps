@@ -712,6 +712,34 @@ def write_posres_files(df, out_path, fc=None) -> None:
         f.write("\n".join(out_lines))
 
 
+def add_restraints_to_top(topology: str, include_dict: dict, def_tag: str, out_top = None):
+    top_path = Path(topology)
+    out_path = Path(out_top) if out_top else top_path
+
+    with open(top_path, 'r') as f:
+        lines = f.readlines()
+
+    print(lines)
+
+    for insert_after, to_insert in include_dict.items():
+
+        to_insert = [
+            "; Include restraint file\n",
+            f"#ifdef {def_tag}\n",
+            f'include "{to_insert}"\n',
+            "#endif\n"
+        ]
+        to_insert.reverse()
+
+        for i, line in enumerate(lines):
+            if insert_after in line:
+                for new_line in to_insert:
+                    lines.insert(i, new_line)
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines))
+
+
 def process_disres(
     filename: str = "./posres_open_25kcal.itp",
     outname: str = "./a2b1+SC4_open_posres",
