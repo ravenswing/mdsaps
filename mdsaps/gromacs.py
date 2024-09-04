@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from glob import glob
 from typing import Optional
+from time import sleep
 
 from . import load
 from .config import GMX
@@ -719,25 +720,26 @@ def add_restraints_to_top(topology: str, include_dict: dict, def_tag: str, out_t
     with open(top_path, 'r') as f:
         lines = f.readlines()
 
-    print(lines)
+    out_lines = []
+    for i, line in enumerate(lines):
+        out_lines.append(line)
 
-    for insert_after, to_insert in include_dict.items():
+        if any([key in line for key in include_dict]):
+            for insert_after, to_insert in include_dict.items():
 
-        to_insert = [
-            "; Include restraint file\n",
-            f"#ifdef {def_tag}\n",
-            f'include "{to_insert}"\n',
-            "#endif\n"
-        ]
-        to_insert.reverse()
+                to_insert = [
+                    "; Include restraint file\n",
+                    f"#ifdef {def_tag}\n",
+                    f'#include "{to_insert}"\n',
+                    "#endif\n",
+                    "\n",
+                ]
 
-        for i, line in enumerate(lines):
-            if insert_after in line:
-                for new_line in to_insert:
-                    lines.insert(i, new_line)
+                if insert_after in line:
+                    out_lines.extend(to_insert)
 
     with open(out_path, "w") as f:
-        f.write("\n".join(lines))
+        f.writelines(out_lines)
 
 
 def process_disres(
