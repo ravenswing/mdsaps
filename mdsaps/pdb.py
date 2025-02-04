@@ -131,7 +131,7 @@ def backbone_weights(df):
     # filter only backbone (removes TER, END)
     df = df[df["atom_name"].isin(["N", "CA", "C", "O"])]
 
-    # set occupancy to 1 ==> alignment weigh
+    # set occupancy to 1 ==> alignment weight
     df.loc[~df["occupancy"].isna(), "occupancy"] = 1
     # set temp factor (beta) to 1 ==> displacement calc. weight
     df.loc[~df["temp"].isna(), "temp"] = 1
@@ -142,11 +142,10 @@ def backbone_weights(df):
 def ligand_weights(
     df,
     ligand_resname: str,
-    prot_align = None,
-    ligand_atoms = None,
+    prot_align=None,
+    ligand_atoms=None,
     only_heavy_atoms: bool = True,
 ):
-
     if prot_align is None or prot_align == "backbone":
         print("Default behaviour ==> align over backbone.")
         backbone = True
@@ -172,10 +171,7 @@ def ligand_weights(
 
     # filter only protein C-alphas (removes TER, END)
     if c_alphas:
-        df = df[
-            (df["atom_name"] == "CA")
-            | (df["res_name"] == ligand_resname)
-        ]
+        df = df[(df["atom_name"] == "CA") | (df["res_name"] == ligand_resname)]
 
     # filter out heavy atoms from ligand
     if only_heavy_atoms:

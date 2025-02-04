@@ -1,5 +1,6 @@
 import logging
 import pandas as pd
+import numpy as np
 import subprocess
 from pathlib import Path
 from glob import glob
@@ -364,7 +365,9 @@ def rx(
     data.to_hdf(f"{outpath}.h5", key="df", mode="w")
 
 
-def calculate_delta_g(fes_path, A, B, vol_corr=0, CVs=None):
+def calculate_delta_g(fes_path, A, B, vol_corr=0, CVs=None, mode="min"):
+    """Calculates the dG going from B => A (i.e. dG = min(A) - min(B))"""
+
     fes_data, cvs = load.fes(fes_path)
     # Convert the CVs to Angstroms:
     fes_data[cvs[0]] = fes_data[cvs[0]].multiply(10)
@@ -376,11 +379,40 @@ def calculate_delta_g(fes_path, A, B, vol_corr=0, CVs=None):
     basin_B = fes_data[
         (fes_data[cvs[0]].between(B[0], B[1])) & (fes_data[cvs[1]].between(B[2], B[3]))
     ].free
-    # Calculate the dG from the minimum value in each basin (bound - unbound)
-    delta_g = basin_A.min() - basin_B.min()
-    # Convert to kcal and apply volume correction for funnel
-    delta_g = (delta_g / 4.184) + vol_corr
-    return delta_g
+
+    if mode == "min":
+        # Calculate the dG from the minimum value in each basin (bound - unbound)
+        delta_g = basin_A.dropna().min() - basin_B.dropna().min()
+        # Convert to kcal and apply volume correction for funnel
+        delta_g = (delta_g / 4.184) + vol_corr
+        return delta_g
+
+    elif mode == "mean":
+        # Convert to ndarray for processing
+        basin_A = np.asarray(basin_A, dtype=np.float64)
+        basin_B = np.asarray(basin_B, dtype=np.float64)
+        # Remove infinite values
+        basin_A = basin_A[np.isfinite(basin_A)]
+        basin_B = basin_B[np.isfinite(basin_B)]
+
+        # Calculate the dG from the mean value in each basin (bound - unbound)
+        delta_g =  basin_A.mean() - basin_B.mean()
+
+        # Convert to kcal and apply volume correction for funnel
+        delta_g = (delta_g / 4.184) + vol_corr
+
+        # Also return statistics to evaluate suitability of each individual basin
+        stats = [
+            basin_A.mean() / 4.184,
+            basin_A.std() / 4.184,
+            basin_B.mean() / 4.184,
+            basin_B.std() / 4.184,
+        ]
+
+        return delta_g, stats
+
+    else:
+        raise ValueError("Unexpected deltaG calculate mode.")
 
 
 def reconstruct_traj(
@@ -417,10 +449,15 @@ def reconstruct_traj(
     if ignore_pbc == False:
         log.debug(f"{' '.join(cmd)}")
         try:
-            subprocess.run(" ".join(cmd), shell=True, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(
+                " ".join(cmd), shell=True, check=True, stdout=subprocess.DEVNULL
+            )
         except subprocess.CalledProcessError as error:
             print(
-                "Error code:", error.returncode, ". Output:", error.output.decode("utf-8")
+                "Error code:",
+                error.returncode,
+                ". Output:",
+                error.output.decode("utf-8"),
             )
     # As step 1 is not run if ignore_pbc, set to original traj file in that case
     step2_input = trj_path if ignore_pbc else "/tmp/tmp1.xtc"
@@ -622,6 +659,7 @@ def transfer_colvar_bias(
     with open(out_path, "w") as f:
         f.writelines(output)
 
+
 # ------------------------------------------------------------------------------------------------
 # GENRES => manipulate restraint files, position- and distance-based
 def load_disres_file(path) -> pd.DataFrame:
@@ -713,11 +751,13 @@ def write_posres_files(df, out_path, fc=None) -> None:
         f.write("\n".join(out_lines))
 
 
-def add_restraints_to_top(topology: str, include_dict: dict, def_tag: str, out_top = None):
+def add_restraints_to_top(
+    topology: str, include_dict: dict, def_tag: str, out_top=None
+):
     top_path = Path(topology)
     out_path = Path(out_top) if out_top else top_path
 
-    with open(top_path, 'r') as f:
+    with open(top_path, "r") as f:
         lines = f.readlines()
 
     out_lines = []
@@ -726,7 +766,6 @@ def add_restraints_to_top(topology: str, include_dict: dict, def_tag: str, out_t
 
         if any([key in line for key in include_dict]):
             for insert_after, to_insert in include_dict.items():
-
                 to_insert = [
                     "; Include restraint file\n",
                     f"#ifdef {def_tag}\n",

@@ -21,6 +21,7 @@ def pdb(filename: str, as_df: bool = False):
         print(f"Loaded {filename}")
         return lines
 
+
 def hills(filename: str) -> list:
     with open(filename) as f:
         lines = [s for s in f.readlines() if not s.startswith(("@", "#"))]

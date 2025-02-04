@@ -52,7 +52,9 @@ def fes2D(
         fes, _ = load.fes(fes_path)
     else:
         fes, cvs = load.fes(fes_path)
-        assert len(cvs) == 2, "Number of CVs found in FES not equal to 2. Please specify with cvs."
+        assert (
+            len(cvs) == 2
+        ), "Number of CVs found in FES not equal to 2. Please specify with cvs."
 
     labels = labels if labels else cvs
     # default value for fun-metaD etc. = 2
@@ -135,6 +137,7 @@ def fes2D(
                     line=dict(color=colours.labels, width=5),
                 )
             else:
+                size = 64 if len(basin_labels[i]) <= 4 else 32
                 fig.add_shape(
                     type="rect",
                     x0=b[0],
@@ -142,7 +145,7 @@ def fes2D(
                     y0=b[2],
                     y1=b[3],
                     line_dash="dash",
-                    label=dict(text=basin_labels[i], font=dict(size=64)),
+                    label=dict(text=basin_labels[i], font=dict(size=size)),
                     line=dict(color=colours.labels, width=5),
                 )
 
